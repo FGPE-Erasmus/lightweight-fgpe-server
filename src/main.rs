@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 use std::str::FromStr;
 use axum::Router;
-use axum::routing::get;
+use axum::routing::{get, post};
 use deadpool_diesel::postgres::Pool;
 
 mod api;
@@ -37,6 +37,8 @@ fn init_pool() -> Pool {
 fn init_router(pool: Pool) -> Router {
     Router::new()
         .route("/get_available_games", get(api::get_available_games))
+        .route("/join_game", post(api::join_game))
+        .route("/save_game", post(api::save_game))
         .with_state(pool)
 }
 
