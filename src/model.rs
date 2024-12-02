@@ -3,6 +3,20 @@ use diesel::prelude::*;
 use crate::schema::*;
 
 #[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
+pub struct Course {
+    pub id: i32,
+    pub title: String,
+    pub description: String,
+    pub languages: String,
+    pub programming_languages: String,
+    pub gamification_rule_conditions: String,
+    pub gamification_complex_rules: String,
+    pub gamification_rule_results: String,
+    pub created_at: NaiveDate,
+    pub updated_at: NaiveDate,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
 pub struct Game {
     pub id: i32,
     pub title: String,
@@ -18,6 +32,18 @@ pub struct Game {
     pub end_date: NaiveDate,
     pub created_at: NaiveDate,
     pub updated_at: NaiveDate,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
+pub struct Module {
+    pub id: i32,
+    pub course: i32,
+    pub order: i32,
+    pub title: String,
+    pub description: String,
+    pub language: String,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
@@ -52,3 +78,5 @@ impl NewPlayerRegistration {
         Self { player, game, language, progress, game_state, saved_at, joined_at, left_at }
     }
 }
+
+allow_tables_to_appear_in_same_query!(player_registrations, games);
