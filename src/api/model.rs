@@ -45,3 +45,36 @@ impl SaveGameResponse {
         Self { saved }
     }
 }
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct LoadGamePayload {
+    pub(super) player_registration_id: i32
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct LoadGameResponse {
+    game_state: String
+}
+
+impl LoadGameResponse {
+    pub fn new(game_state: String) -> Self {
+        Self { game_state }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct LeaveGamePayload {
+    pub(super) player_id: i32,
+    pub(super) game_id: i32
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct LeaveGameResponse {
+    left: bool
+}
+
+impl LeaveGameResponse {
+    pub fn new(left: bool) -> Self {
+        Self { left }
+    }
+}

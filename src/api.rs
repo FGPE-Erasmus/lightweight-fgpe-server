@@ -1,4 +1,4 @@
-use crate::api::model::{GetAvailableGamesResponse, JoinGamePayload, JoinGameResponse, SaveGamePayload, SaveGameResponse};
+use crate::api::model::{GetAvailableGamesResponse, JoinGamePayload, JoinGameResponse, LeaveGamePayload, LeaveGameResponse, LoadGamePayload, LoadGameResponse, SaveGamePayload, SaveGameResponse};
 use crate::model::{Game, NewPlayerRegistration, PlayerRegistration};
 use crate::schema::{games, player_registrations};
 use axum::extract::State;
@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use axum::Json;
 use chrono::Utc;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
-use crate::schema::player_registrations::{game_state, saved_at};
+use crate::schema::player_registrations::{game, game_state, id, left_at, player, saved_at};
 
 mod model;
 mod utils;
@@ -69,4 +69,50 @@ pub async fn save_game(
         .map_err(utils::internal_error)?
         .map_err(utils::internal_error)?;
     Ok(Json(SaveGameResponse::new(res == 1)))
+}
+
+pub async fn load_game(
+    State(pool): State<deadpool_diesel::postgres::Pool>,
+    Json(payload): Json<LoadGamePayload>,
+) -> Result<Json<LoadGameResponse>, (StatusCode, String)> {
+    let conn = pool.get().await.map_err(utils::internal_error)?;
+    let res = conn
+        .interact(move |conn| {
+            player_registrations::table
+                .filter(id.eq(payload.player_registration_id))
+                .select(PlayerRegistration::as_select())
+                .first(conn)
+        })
+        .await
+        .map_err(utils::internal_error)?
+        .map_err(utils::internal_error)?;
+    Ok(Json(LoadGameResponse::new(res.game_state)))
+}
+
+pub async fn leave_game(
+    State(pool): State<deadpool_diesel::postgres::Pool>,
+    Json(payload): Json<LeaveGamePayload>,
+) -> Result<Json<LeaveGameResponse>, (StatusCode, String)> {
+    let conn = pool.get().await.map_err(utils::internal_error)?;
+    let res = conn
+        .interact(move |conn| {
+            player_registrations::table
+                .filter(player.eq(payload.player_id))
+                .filter(game.eq(payload.game_id))
+                .select(PlayerRegistration::as_select())
+                .first(conn)
+        })
+        .await
+        .map_err(utils::internal_error)?
+        .map_err(utils::internal_error)?;
+    let res = conn
+        .interact(move |conn| {
+            diesel::update(player_registrations::table.find(res.id))
+                .set(left_at.eq(Utc::now().date_naive()))
+                .execute(conn)
+        })
+        .await
+        .map_err(utils::internal_error)?
+        .map_err(utils::internal_error)?;
+    Ok(Json(LeaveGameResponse::new(res == 1)))
 }

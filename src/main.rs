@@ -39,6 +39,8 @@ fn init_router(pool: Pool) -> Router {
         .route("/get_available_games", get(api::get_available_games))
         .route("/join_game", post(api::join_game))
         .route("/save_game", post(api::save_game))
+        .route("/load_game", post(api::load_game))
+        .route("/leave_game", post(api::leave_game))
         .with_state(pool)
 }
 
