@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use crate::model::{Game, PlayerRegistration};
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -148,5 +149,29 @@ impl GetCourseDataResponse {
     pub fn new(course_gamification_rule_conditions: String, gamification_complex_rules: String,
                gamification_rule_results: String, modules: Vec<i32>) -> Self {
         Self { course_gamification_rule_conditions, gamification_complex_rules, gamification_rule_results, modules }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct GetModuleDataPayload {
+    pub(super) module_id: i32,
+    pub(super) language: String,
+    pub(super) programming_language: String
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct GetModuleDataResponse {
+    module_order: i32,
+    module_title: String,
+    module_description: String,
+    module_start_date: NaiveDate,
+    module_end_date: NaiveDate,
+    exercises: Vec<i32>
+}
+
+impl GetModuleDataResponse {
+    pub fn new(module_order: i32, module_title: String, module_description: String,
+               module_start_date: NaiveDate, module_end_date: NaiveDate, exercises: Vec<i32>) -> Self {
+        Self { module_order, module_title, module_description, module_start_date, module_end_date, exercises }
     }
 }

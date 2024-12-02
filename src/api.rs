@@ -1,7 +1,7 @@
-use crate::api::model::{GetAvailableGamesResponse, GetCourseDataPayload, GetCourseDataResponse, GetGameMetadataPayload, GetGameMetadataResponse, GetPlayerGamesPayload, GetPlayerGamesResponse, JoinGamePayload, JoinGameResponse, LeaveGamePayload, LeaveGameResponse, LoadGamePayload, LoadGameResponse, SaveGamePayload, SaveGameResponse, SetGameLangPayload, SetGameLangResponse};
-use crate::model::{Course, Game, NewPlayerRegistration, PlayerRegistration};
+use crate::api::model::{GetAvailableGamesResponse, GetCourseDataPayload, GetCourseDataResponse, GetGameMetadataPayload, GetGameMetadataResponse, GetModuleDataPayload, GetModuleDataResponse, GetPlayerGamesPayload, GetPlayerGamesResponse, JoinGamePayload, JoinGameResponse, LeaveGamePayload, LeaveGameResponse, LoadGamePayload, LoadGameResponse, SaveGamePayload, SaveGameResponse, SetGameLangPayload, SetGameLangResponse};
+use crate::model::{Course, Game, Module, NewPlayerRegistration, PlayerRegistration};
 use crate::schema::player_registrations::{game, game_state, id, language, left_at, player, saved_at};
-use crate::schema::{courses, games, modules, player_registrations};
+use crate::schema::{courses, exercises, games, modules, player_registrations};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
@@ -254,5 +254,37 @@ pub async fn get_course_data(
         course.gamification_complex_rules,
         course.gamification_rule_results,
         res
+    )))
+}
+
+pub async fn get_module_data(
+    State(pool): State<deadpool_diesel::postgres::Pool>,
+    Json(payload): Json<GetModuleDataPayload>,
+) -> Result<Json<GetModuleDataResponse>, (StatusCode, String)> {
+    let conn = pool.get().await.map_err(utils::internal_error)?;
+    let module = conn
+        .interact(move |conn| {
+            modules::table
+                .filter(modules::id.eq(payload.module_id))
+                .select(Module::as_select())
+                .first(conn)
+        })
+        .await
+        .map_err(utils::internal_error)?
+        .map_err(utils::internal_error)?;
+    let res = conn
+        .interact(move |conn| {
+            exercises::table
+                .filter(exercises::module.eq(payload.module_id))
+                .filter(exercises::programming_language.eq(payload.programming_language))
+                .filter(exercises::language.eq(payload.language))
+                .select(exercises::id)
+                .load(conn)
+        })
+        .await
+        .map_err(utils::internal_error)?
+        .map_err(utils::internal_error)?;
+    Ok(Json(GetModuleDataResponse::new(
+        module.order, module.title, module.description, module.start_date, module.end_date, res
     )))
 }

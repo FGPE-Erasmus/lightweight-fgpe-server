@@ -47,6 +47,30 @@ pub struct Module {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
+pub struct Exercise {
+    pub id: i32,
+    pub version: i32,
+    pub module: i32,
+    pub order: i32,
+    pub title: String,
+    pub description: String,
+    pub language: String,
+    pub programming_language: String,
+    pub init_code: String,
+    pub pre_code: String,
+    pub post_code: String,
+    pub test_code: String,
+    pub check_source: String,
+    pub hidden: bool,
+    pub locked: bool,
+    pub mode: String,
+    pub mode_parameters: String,
+    pub difficulty: String,
+    pub created_at: NaiveDate,
+    pub updated_at: NaiveDate,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
 pub struct PlayerRegistration {
     pub id: i32,
     pub player: i32,
