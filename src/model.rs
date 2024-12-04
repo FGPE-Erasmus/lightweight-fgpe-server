@@ -70,6 +70,107 @@ pub struct Exercise {
     pub updated_at: NaiveDate,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Insertable)]
+#[diesel(table_name = submissions)]
+pub struct NewSubmission {
+    pub exercise: i32,
+    pub player: i32,
+    pub client: String,
+    pub submitted_code: String,
+    pub metrics: String,
+    pub result: f64,
+    pub result_description: String,
+    pub feedback: String,
+    pub earned_rewards: String,
+    pub entered_at: NaiveDate,
+    pub submitted_at: NaiveDate,
+}
+
+impl NewSubmission {
+    pub fn new(exercise: i32, player: i32, client: String, submitted_code: String, metrics: String,
+               result: f64, result_description: String, feedback: String, earned_rewards: String,
+               entered_at: NaiveDate, submitted_at: NaiveDate) -> Self {
+        Self { exercise, player, client, submitted_code, metrics, result, result_description,
+            feedback, earned_rewards, entered_at, submitted_at }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
+pub struct Submission {
+    pub id: i32,
+    pub exercise: i32,
+    pub player: i32,
+    pub client: String,
+    pub submitted_code: String,
+    pub metrics: String,
+    pub result: f64,
+    pub result_description: String,
+    pub feedback: String,
+    pub earned_rewards: String,
+    pub entered_at: NaiveDate,
+    pub submitted_at: NaiveDate,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
+pub struct Player {
+    pub id: i32,
+    pub email: String,
+    pub display_name: String,
+    pub display_avatar: String,
+    pub points: i32,
+    pub created_at: NaiveDate,
+    pub last_active: NaiveDate,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
+pub struct Group {
+    pub id: i32,
+    pub display_name: String,
+    pub display_avatar: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
+pub struct PlayerGroup {
+    pub player: i32,
+    pub group: i32,
+    pub joined_at: NaiveDate,
+    pub left_at: Option<NaiveDate>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable, Insertable)]
+pub struct PlayerUnlock {
+    pub player: i32,
+    pub exercise: i32,
+    pub unlocked_at: NaiveDate,
+}
+
+impl PlayerUnlock {
+    pub fn new(player: i32, exercise: i32, unlocked_at: NaiveDate) -> Self {
+        Self { player, exercise, unlocked_at }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
+pub struct Reward {
+    pub id: i32,
+    pub course: i32,
+    pub name: String,
+    pub description: String,
+    pub message_when_won: String,
+    pub image_url: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
+pub struct PlayerReward {
+    pub player: i32,
+    pub reward: i32,
+    pub game: Option<i32>,
+    pub count: i32,
+    pub used_count: i32,
+    pub obtained_at: NaiveDate,
+    pub expires_at: NaiveDate,
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
 pub struct PlayerRegistration {
     pub id: i32,
@@ -104,3 +205,4 @@ impl NewPlayerRegistration {
 }
 
 allow_tables_to_appear_in_same_query!(player_registrations, games);
+allow_tables_to_appear_in_same_query!(modules, exercises);

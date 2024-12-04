@@ -46,6 +46,10 @@ fn init_router(pool: Pool) -> Router {
         .route("/get_game_metadata", post(api::get_game_metadata))
         .route("/get_course_data", post(api::get_course_data))
         .route("/get_module_data", post(api::get_module_data))
+        .route("/get_exercise_data", post(api::get_exercise_data))
+        .route("/submit_solution", post(api::submit_solution))
+        .route("/unlock", post(api::unlock))
+        .route("/get_last_solution", post(api::get_last_solution))
         .with_state(pool)
 }
 

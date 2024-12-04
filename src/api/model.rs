@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use crate::model::{Game, PlayerRegistration};
+use crate::model::{Exercise, Game, PlayerRegistration};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetAvailableGamesResponse {
@@ -173,5 +173,83 @@ impl GetModuleDataResponse {
     pub fn new(module_order: i32, module_title: String, module_description: String,
                module_start_date: NaiveDate, module_end_date: NaiveDate, exercises: Vec<i32>) -> Self {
         Self { module_order, module_title, module_description, module_start_date, module_end_date, exercises }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct GetExerciseDataPayload {
+    pub(super) exercise_id: i32,
+    pub(super) game_id: i32,
+    pub(super) player_id: i32
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct GetExerciseDataResponse {
+    exercise: Exercise
+}
+
+impl GetExerciseDataResponse {
+    pub fn new(exercise: Exercise) -> Self {
+        Self { exercise }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct SubmitSolutionPayload {
+    pub(super) exercise_id: i32,
+    pub(super) player_id: i32,
+    pub(super) submission_client: String,
+    pub(super) submission_submitted_code: String,
+    pub(super) submission_metrics: String,
+    pub(super) submission_result: f64,
+    pub(super) submission_result_description: String,
+    pub(super) submission_feedback: String,
+    pub(super) submission_entered_at: NaiveDate,
+    pub(super) submission_earned_rewards: String
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct SubmitSolutionResponse {
+    first_submission: bool
+}
+
+impl SubmitSolutionResponse {
+    pub fn new(first_submission: bool) -> Self {
+        Self { first_submission }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct UnlockPayload {
+    pub(super) exercise_id: i32,
+    pub(super) player_id: i32
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct GetLastSolutionPayload {
+    pub(super) exercise_id: i32,
+    pub(super) player_id: i32,
+    pub(super) submission_client: String,
+    pub(super) submission_submitted_code: String,
+    pub(super) submission_metrics: String,
+    pub(super) submission_result: f64,
+    pub(super) submission_result_description: String,
+    pub(super) submission_feedback: String,
+    pub(super) submission_entered_at: NaiveDate,
+    pub(super) submission_earned_rewards: String
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct GetLastSolutionResponse {
+    pub(super) submission_submitted_code: String,
+    pub(super) submission_metrics: String,
+    pub(super) submission_result: f64,
+    pub(super) submission_result_description: String,
+    pub(super) submission_feedback: String
+}
+
+impl GetLastSolutionResponse {
+    pub fn new(submission_submitted_code: String, submission_metrics: String, submission_result: f64, submission_result_description: String, submission_feedback: String) -> Self {
+        Self { submission_submitted_code, submission_metrics, submission_result, submission_result_description, submission_feedback }
     }
 }
