@@ -1,7 +1,7 @@
 use crate::api::model::{GetAvailableGamesResponse, GetCourseDataPayload, GetCourseDataResponse, GetExerciseDataPayload, GetExerciseDataResponse, GetGameMetadataPayload, GetGameMetadataResponse, GetLastSolutionPayload, GetLastSolutionResponse, GetModuleDataPayload, GetModuleDataResponse, GetPlayerGamesPayload, GetPlayerGamesResponse, JoinGamePayload, JoinGameResponse, LeaveGamePayload, LeaveGameResponse, LoadGamePayload, LoadGameResponse, SaveGamePayload, SaveGameResponse, SetGameLangPayload, SetGameLangResponse, SubmitSolutionPayload, SubmitSolutionResponse, UnlockPayload};
 use crate::model::{Course, Exercise, Game, Module, NewPlayerRegistration, NewSubmission, PlayerRegistration, PlayerUnlock, Submission};
-use crate::schema::player_registrations::{game, game_state, id, language, left_at, player, saved_at};
-use crate::schema::{courses, exercises, games, modules, player_registrations, player_unlocks, submissions};
+use crate::schema::playerregistrations::{game, gamestate, id, language, leftat, player, savedat};
+use crate::schema::{courses, exercises, games, modules, playerregistrations, playerunlocks, submissions};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
@@ -31,7 +31,7 @@ pub async fn join_game(
     let date = Utc::now().date_naive();
     let res = conn
         .interact(move |conn| {
-            diesel::insert_into(player_registrations::table)
+            diesel::insert_into(playerregistrations::table)
                 .values(NewPlayerRegistration::new(
                     payload.player_id,
                     payload.game_id,
@@ -58,10 +58,10 @@ pub async fn save_game(
     let conn = pool.get().await.map_err(utils::internal_error)?;
     let res = conn
         .interact(move |conn| {
-            diesel::update(player_registrations::table.find(payload.player_registration_id))
+            diesel::update(playerregistrations::table.find(payload.player_registration_id))
                 .set((
-                    game_state.eq(payload.game_state),
-                    saved_at.eq(Utc::now().date_naive())
+                    gamestate.eq(payload.game_state),
+                    savedat.eq(Utc::now().date_naive())
                 ))
                 .execute(conn)
         })
@@ -78,7 +78,7 @@ pub async fn load_game(
     let conn = pool.get().await.map_err(utils::internal_error)?;
     let res = conn
         .interact(move |conn| {
-            player_registrations::table
+            playerregistrations::table
                 .filter(id.eq(payload.player_registration_id))
                 .select(PlayerRegistration::as_select())
                 .first(conn)
@@ -86,7 +86,7 @@ pub async fn load_game(
         .await
         .map_err(utils::internal_error)?
         .map_err(utils::internal_error)?;
-    Ok(Json(LoadGameResponse::new(res.game_state)))
+    Ok(Json(LoadGameResponse::new(res.gamestate)))
 }
 
 pub async fn leave_game(
@@ -96,7 +96,7 @@ pub async fn leave_game(
     let conn = pool.get().await.map_err(utils::internal_error)?;
     let res = conn
         .interact(move |conn| {
-            player_registrations::table
+            playerregistrations::table
                 .filter(player.eq(payload.player_id))
                 .filter(game.eq(payload.game_id))
                 .select(PlayerRegistration::as_select())
@@ -107,8 +107,8 @@ pub async fn leave_game(
         .map_err(utils::internal_error)?;
     let res = conn
         .interact(move |conn| {
-            diesel::update(player_registrations::table.find(res.id))
-                .set(left_at.eq(Utc::now().date_naive()))
+            diesel::update(playerregistrations::table.find(res.id))
+                .set(leftat.eq(Utc::now().date_naive()))
                 .execute(conn)
         })
         .await
@@ -145,7 +145,7 @@ pub async fn set_game_lang(
     if res.languages.split(',').collect::<Vec<_>>().contains(&&*payload.language) {
         let res = conn
             .interact(move |conn| {
-                player_registrations::table
+                playerregistrations::table
                     .filter(player.eq(payload.player_id))
                     .filter(game.eq(payload.game_id))
                     .select(PlayerRegistration::as_select())
@@ -156,7 +156,7 @@ pub async fn set_game_lang(
             .map_err(utils::internal_error)?;
         let res = conn
             .interact(move |conn| {
-                diesel::update(player_registrations::table.find(res.id))
+                diesel::update(playerregistrations::table.find(res.id))
                     .set(language.eq(payload.language))
                     .execute(conn)
             })
@@ -177,13 +177,13 @@ pub async fn get_player_games(
     let res = conn
         .interact(move |conn| {
             if payload.active {
-                player_registrations::table
+                playerregistrations::table
                     .inner_join(games::table.on(game.eq(games::id)))
                     .filter(games::active.eq(true))
                     .select(id)
                     .load(conn)
             } else {
-                player_registrations::table
+                playerregistrations::table
                     .select(id)
                     .load(conn)
             }
@@ -201,7 +201,7 @@ pub async fn get_game_metadata(
     let conn = pool.get().await.map_err(utils::internal_error)?;
     let res = conn
         .interact(move |conn| {
-            player_registrations::table
+            playerregistrations::table
                 .inner_join(games::table.on(game.eq(games::id)))
                 .filter(id.eq(payload.player_registrations_id))
                 .select((PlayerRegistration::as_select(), Game::as_select()))
@@ -250,9 +250,9 @@ pub async fn get_course_data(
         .map_err(utils::internal_error)?
         .map_err(utils::internal_error)?;
     Ok(Json(GetCourseDataResponse::new(
-        course.gamification_rule_conditions,
-        course.gamification_complex_rules,
-        course.gamification_rule_results,
+        course.gamificationruleconditions,
+        course.gamificationcomplexrules,
+        course.gamificationruleresults,
         res
     )))
 }
@@ -276,7 +276,7 @@ pub async fn get_module_data(
         .interact(move |conn| {
             exercises::table
                 .filter(exercises::module.eq(payload.module_id))
-                .filter(exercises::programming_language.eq(payload.programming_language))
+                .filter(exercises::programminglanguage.eq(payload.programming_language))
                 .filter(exercises::language.eq(payload.language))
                 .select(exercises::id)
                 .load(conn)
@@ -285,7 +285,7 @@ pub async fn get_module_data(
         .map_err(utils::internal_error)?
         .map_err(utils::internal_error)?;
     Ok(Json(GetModuleDataResponse::new(
-        module.order, module.title, module.description, module.start_date, module.end_date, res
+        module.order, module.title, module.description, module.startdate, module.enddate, res
     )))
 }
 
@@ -306,9 +306,9 @@ pub async fn get_exercise_data(
         .map_err(utils::internal_error)?;
     let player_unlock = conn
         .interact(move |conn| {
-            player_unlocks::table
-                .filter(player_unlocks::player.eq(payload.player_id))
-                .filter(player_unlocks::exercise.eq(payload.exercise_id))
+            playerunlocks::table
+                .filter(playerunlocks::player.eq(payload.player_id))
+                .filter(playerunlocks::exercise.eq(payload.exercise_id))
                 .select(PlayerUnlock::as_select())
                 .load(conn)
         })
@@ -326,7 +326,7 @@ pub async fn get_exercise_data(
         .map_err(utils::internal_error)?
         .map_err(utils::internal_error)?;
     exercise.hidden = exercise.hidden && player_unlock.is_empty();
-    exercise.locked = (exercise.locked || res_game.exercise_lock) && player_unlock.is_empty(); //todo helper functions from mail
+    exercise.locked = (exercise.locked || res_game.exerciselock) && player_unlock.is_empty(); //todo helper functions from mail
     Ok(Json(GetExerciseDataResponse::new(exercise)))
 }
 
@@ -394,11 +394,11 @@ pub async fn submit_solution(
 
         let _ = conn
             .interact(move |conn| {
-                diesel::update(player_registrations::table)
-                    .filter(player_registrations::player.eq(payload.player_id))
-                    .filter(player_registrations::game.eq(game_res.id))
+                diesel::update(playerregistrations::table)
+                    .filter(playerregistrations::player.eq(payload.player_id))
+                    .filter(playerregistrations::game.eq(game_res.id))
                     .set((
-                        player_registrations::progress.eq(player_registrations::progress + 1),
+                        playerregistrations::progress.eq(playerregistrations::progress + 1),
                     ))
                     .execute(conn)
             })
@@ -418,7 +418,7 @@ pub async fn unlock(
     let conn = pool.get().await.map_err(utils::internal_error)?;
     let _ = conn
         .interact(move |conn| {
-            diesel::insert_into(player_unlocks::table)
+            diesel::insert_into(playerunlocks::table)
                 .values(PlayerUnlock::new(payload.player_id, payload.exercise_id, Utc::now().date_naive()))
                 .returning(PlayerUnlock::as_returning())
                 .get_result(conn)
@@ -445,10 +445,10 @@ pub async fn get_last_solution(
         .map_err(utils::internal_error)?
         .map_err(utils::internal_error)?;
     Ok(Json(GetLastSolutionResponse::new(
-        res.submitted_code,
+        res.submittedcode,
         res.metrics,
         res.result,
-        res.result_description,
+        res.resultdescription,
         res.feedback
     )))//todo revise
 }

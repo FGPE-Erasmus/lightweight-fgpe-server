@@ -6,12 +6,12 @@ table! {
         title -> Text,
         description -> Text,
         languages -> Text,
-        programming_languages -> Text,
-        gamification_rule_conditions -> Text,
-        gamification_complex_rules -> Text,
-        gamification_rule_results -> Text,
-        created_at -> Date,
-        updated_at -> Date,
+        programminglanguages -> Text, // updated to match schema
+        gamificationruleconditions -> Text,
+        gamificationcomplexrules -> Text,
+        gamificationruleresults -> Text,
+        createdat -> Date,
+        updatedat -> Date,
     }
 }
 
@@ -23,14 +23,14 @@ table! {
         active -> Bool,
         description -> Text,
         course -> Integer,
-        programming_language -> Text,
-        module_lock -> Float,
-        exercise_lock -> Bool,
-        total_exercises -> Integer,
-        start_date -> Date,
-        end_date -> Date,
-        created_at -> Date,
-        updated_at -> Date,
+        programminglanguage -> Text, // updated to match schema
+        modulelock -> Float,
+        exerciselock -> Bool,
+        totalexercises -> Integer,
+        startdate -> Date,
+        enddate -> Date,
+        createdat -> Date,
+        updatedat -> Date,
     }
 }
 
@@ -42,8 +42,8 @@ table! {
         title -> Text,
         description -> Text,
         language -> Text,
-        start_date -> Date,
-        end_date -> Date,
+        startdate -> Date,
+        enddate -> Date,
     }
 }
 
@@ -56,19 +56,19 @@ table! {
         title -> Text,
         description -> Text,
         language -> Text,
-        programming_language -> Text,
-        init_code -> Text,
-        pre_code -> Text,
-        post_code -> Text,
-        test_code -> Text,
-        check_source -> Text,
+        programminglanguage -> Text, // updated to match schema
+        initcode -> Text, // updated to match schema
+        precode -> Text, // updated to match schema
+        postcode -> Text, // updated to match schema
+        testcode -> Text, // updated to match schema
+        checksource -> Text, // updated to match schema
         hidden -> Bool,
         locked -> Bool,
         mode -> Text,
-        mode_parameters -> Text,
+        modeparameters -> Text,
         difficulty -> Text,
-        created_at -> Date,
-        updated_at -> Date,
+        createdat -> Date,
+        updatedat -> Date,
     }
 }
 
@@ -78,14 +78,14 @@ table! {
         exercise -> Integer,
         player -> Integer,
         client -> Text,
-        submitted_code -> Text,
+        submittedcode -> Text, // updated to match schema
         metrics -> Text,
         result -> Double,
-        result_description -> Text,
+        resultdescription -> Text,
         feedback -> Text,
-        earned_rewards -> Text,
-        entered_at -> Date,
-        submitted_at -> Date,
+        earnedrewards -> Text,
+        enteredat -> Date,
+        submittedat -> Date,
     }
 }
 
@@ -93,50 +93,50 @@ table! {
     players (id) {
         id -> Integer,
         email -> Text,
-        display_name -> Text,
-        display_avatar -> Text,
+        displayname -> Text, // updated to match schema
+        displayavatar -> Text, // updated to match schema
         points -> Integer,
-        created_at -> Date,
-        last_active -> Date,
+        createdat -> Date,
+        lastactive -> Date,
     }
 }
 
 table! {
     groups (id) {
         id -> Integer,
-        display_name -> Text,
-        display_avatar -> Text,
+        displayname -> Text, // updated to match schema
+        displayavatar -> Text, // updated to match schema
     }
 }
 
 table! {
-    player_groups (player, group) {
+    playergroups (player, group) {
         player -> Integer,
         group -> Integer,
-        joined_at -> Date,
-        left_at -> Date,
+        joinedat -> Date,
+        leftat -> Nullable<Date>, // corrected to match schema
     }
 }
 
 table! {
-    player_registrations (id) {
+    playerregistrations (id) {
         id -> Integer,
         player -> Integer,
         game -> Integer,
         language -> Text,
         progress -> Integer,
-        game_state -> Text,
-        saved_at -> Date,
-        joined_at -> Date,
-        left_at -> Nullable<Date>,
+        gamestate -> Text,
+        savedat -> Date,
+        joinedat -> Date,
+        leftat -> Nullable<Date>,
     }
 }
 
 table! {
-    player_unlocks (player, exercise) {
+    playerunlocks (player, exercise) {
         player -> Integer,
         exercise -> Integer,
-        unlocked_at -> Date,
+        unlockedat -> Date,
     }
 }
 
@@ -146,19 +146,19 @@ table! {
         course -> Integer,
         name -> Text,
         description -> Text,
-        message_when_won -> Text,
-        image_url -> Text,
+        messagewhenwon -> Text, // updated to match schema
+        imageurl -> Text, // updated to match schema
     }
 }
 
 table! {
-    player_rewards (player, reward, game) {
+    playerrewards (player, reward, game) {
         player -> Integer,
         reward -> Integer,
-        game -> Integer,
+        game -> Nullable<Integer>, // corrected to match schema
         count -> Integer,
-        used_count -> Integer,
-        obtained_at -> Date,
-        expires_at -> Date,
+        usedcount -> Integer,
+        obtainedat -> Date,
+        expiresat -> Date,
     }
 }
