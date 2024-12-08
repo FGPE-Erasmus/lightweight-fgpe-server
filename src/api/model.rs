@@ -21,11 +21,11 @@ pub struct JoinGamePayload {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct JoinGameResponse {
-    player_registration_id: i32
+    player_registration_id: Option<i32>
 }
 
 impl JoinGameResponse {
-    pub fn new(player_registration_id: i32) -> Self {
+    pub fn new(player_registration_id: Option<i32>) -> Self {
         Self { player_registration_id }
     }
 }
