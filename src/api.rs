@@ -206,101 +206,73 @@ pub async fn get_player_games(
     Ok(Json(GetPlayerGamesResponse::new(games_result)))
 }
 
-// pub async fn get_game_metadata(
-//     State(pool): State<deadpool_diesel::postgres::Pool>,
-//     Json(payload): Json<GetGameMetadataPayload>,
-// ) -> Result<Json<GetGameMetadataResponse>, (StatusCode, String)> {
-//     let conn = pool.get().await.map_err(utils::internal_error)?;
-//     let res = conn
-//         .interact(move |conn| {
-//             playerregistrations::table
-//                 .inner_join(games::table.on(game.eq(games::id)))
-//                 .filter(id.eq(payload.player_registrations_id))
-//                 .select((PlayerRegistration::as_select(), Game::as_select()))
-//                 .first(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     Ok(Json(GetGameMetadataResponse::new(res)))
-// }
-//
-// pub async fn get_course_data(
-//     State(pool): State<deadpool_diesel::postgres::Pool>,
-//     Json(payload): Json<GetCourseDataPayload>,
-// ) -> Result<Json<GetCourseDataResponse>, (StatusCode, String)> {
-//     let conn = pool.get().await.map_err(utils::internal_error)?;
-//     let res = conn
-//         .interact(move |conn| {
-//             games::table
-//                 .filter(games::id.eq(payload.game_id))
-//                 .select(Game::as_select())
-//                 .first(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     let course = conn
-//         .interact(move |conn| {
-//             courses::table
-//                 .filter(courses::id.eq(res.course))
-//                 .select(Course::as_select())
-//                 .first(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     let res = conn
-//         .interact(move |conn| {
-//             modules::table
-//                 .filter(modules::course.eq(course.id))
-//                 .filter(modules::language.eq(payload.language))
-//                 .select(modules::id)
-//                 .load(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     Ok(Json(GetCourseDataResponse::new(
-//         course.gamificationruleconditions,
-//         course.gamificationcomplexrules,
-//         course.gamificationruleresults,
-//         res
-//     )))
-// }
-//
-// pub async fn get_module_data(
-//     State(pool): State<deadpool_diesel::postgres::Pool>,
-//     Json(payload): Json<GetModuleDataPayload>,
-// ) -> Result<Json<GetModuleDataResponse>, (StatusCode, String)> {
-//     let conn = pool.get().await.map_err(utils::internal_error)?;
-//     let module = conn
-//         .interact(move |conn| {
-//             modules::table
-//                 .filter(modules::id.eq(payload.module_id))
-//                 .select(Module::as_select())
-//                 .first(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     let res = conn
-//         .interact(move |conn| {
-//             exercises::table
-//                 .filter(exercises::module.eq(payload.module_id))
-//                 .filter(exercises::programminglanguage.eq(payload.programming_language))
-//                 .filter(exercises::language.eq(payload.language))
-//                 .select(exercises::id)
-//                 .load(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     Ok(Json(GetModuleDataResponse::new(
-//         module.order, module.title, module.description, module.startdate, module.enddate, res
-//     )))
-// }
-//
+pub async fn get_game_metadata(
+    State(pool): State<deadpool_diesel::postgres::Pool>,
+    Json(payload): Json<GetGameMetadataPayload>,
+) -> ApiResponse<GetGameMetadataResponse> {
+    let metadata_result = run_query(&pool, move |conn| {
+        playerregistrations::table
+            .inner_join(games::table.on(game.eq(games::id)))
+            .filter(id.eq(payload.player_registrations_id))
+            .select((PlayerRegistration::as_select(), Game::as_select()))
+            .first(conn)
+    }).await?;
+    Ok(Json(GetGameMetadataResponse::new(metadata_result)))
+}
+
+pub async fn get_course_data(
+    State(pool): State<deadpool_diesel::postgres::Pool>,
+    Json(payload): Json<GetCourseDataPayload>,
+) -> ApiResponse<GetCourseDataResponse> {
+    let game_result = run_query(&pool, move |conn| {
+        games::table
+            .filter(games::id.eq(payload.game_id))
+            .select(Game::as_select())
+            .first(conn)
+    }).await?;
+    let course_result = run_query(&pool, move |conn| {
+        courses::table
+            .filter(courses::id.eq(game_result.course))
+            .select(Course::as_select())
+            .first(conn)
+    }).await?;
+    let modules_result = run_query(&pool, move |conn| {
+        modules::table
+            .filter(modules::course.eq(course_result.id))
+            .filter(modules::language.eq(payload.language))
+            .select(modules::id)
+            .load(conn)
+    }).await?;
+    Ok(Json(GetCourseDataResponse::new(
+        course_result.gamificationruleconditions,
+        course_result.gamificationcomplexrules,
+        course_result.gamificationruleresults,
+        modules_result,
+    )))
+}
+
+pub async fn get_module_data(
+    State(pool): State<deadpool_diesel::postgres::Pool>,
+    Json(payload): Json<GetModuleDataPayload>,
+) -> ApiResponse<GetModuleDataResponse> {
+    let module = run_query(&pool, move |conn| {
+        modules::table.find(payload.module_id)
+            .select(Module::as_select())
+            .first(conn)
+    }).await?;
+    let exercises = run_query(&pool, move |conn| {
+        exercises::table
+            .filter(exercises::module.eq(payload.module_id))
+            .filter(exercises::programminglanguage.eq(payload.programming_language))
+            .filter(exercises::language.eq(payload.language))
+            .select(exercises::id)
+            .load(conn)
+    }).await?;
+    Ok(Json(GetModuleDataResponse::new(
+        module.order, module.title, module.description, module.startdate, module.enddate, exercises
+    )))
+}
+
 // pub async fn get_exercise_data(
 //     State(pool): State<deadpool_diesel::postgres::Pool>,
 //     Json(payload): Json<GetExerciseDataPayload>,
