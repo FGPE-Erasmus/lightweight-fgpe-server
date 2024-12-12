@@ -9,8 +9,6 @@ mod model;
 mod schema;
 
 const DB_URL: &str = "postgresql://postgres:admin@localhost:5432/gam2";
-//const DB_URL: &str = "postgresql://wiktor:DB%2Bpass%402024%21@localhost:5432/fgpepp";
-//const DB_URL: &str = "postgresql://localhost:5432/fgpepp";
 const SERVER_URL: &str = "127.0.0.1:3000";
 
 #[tokio::main]

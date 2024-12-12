@@ -1,13 +1,13 @@
-use crate::api::model::{GetAvailableGamesResponse, GetCourseDataPayload, GetCourseDataResponse, GetExerciseDataPayload, GetExerciseDataResponse, GetGameMetadataPayload, GetGameMetadataResponse, GetLastSolutionPayload, GetLastSolutionResponse, GetModuleDataPayload, GetModuleDataResponse, GetPlayerGamesPayload, GetPlayerGamesResponse, JoinGamePayload, JoinGameResponse, LeaveGamePayload, LeaveGameResponse, LoadGamePayload, LoadGameResponse, SaveGamePayload, SaveGameResponse, SetGameLangPayload, SetGameLangResponse, SubmitSolutionPayload, SubmitSolutionResponse, UnlockPayload};
-use crate::model::{Course, Exercise, Game, Module, NewPlayerRegistration, NewSubmission, PlayerRegistration, PlayerUnlock, Submission};
+use crate::api::model::{GetAvailableGamesResponse, GetCourseDataPayload, GetCourseDataResponse, GetGameMetadataPayload, GetGameMetadataResponse, GetModuleDataPayload, GetModuleDataResponse, GetPlayerGamesPayload, GetPlayerGamesResponse, JoinGamePayload, JoinGameResponse, LeaveGamePayload, LeaveGameResponse, LoadGamePayload, LoadGameResponse, SaveGamePayload, SaveGameResponse, SetGameLangPayload, SetGameLangResponse};
+use crate::model::{Course, Game, Module, NewPlayerRegistration, PlayerRegistration};
+use crate::schema::games::{active, public};
 use crate::schema::playerregistrations::{game, gamestate, id, language, leftat, player, savedat};
-use crate::schema::{courses, exercises, games, modules, playerregistrations, playerunlocks, submissions};
+use crate::schema::{courses, exercises, games, modules, playerregistrations};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
 use chrono::Utc;
 use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, RunQueryDsl, SelectableHelper};
-use crate::schema::games::{active, public};
 
 mod model;
 
@@ -63,7 +63,7 @@ pub async fn join_game(
             .select(PlayerRegistration::as_select())
             .first(conn)
     }).await;
-    if let Ok(_) = result {
+    if result.is_ok() {
         return Ok(Json(JoinGameResponse::new(None)));
     }
     let date = Utc::now().date_naive();
@@ -272,167 +272,3 @@ pub async fn get_module_data(
         module.order, module.title, module.description, module.startdate, module.enddate, exercises
     )))
 }
-
-// pub async fn get_exercise_data(
-//     State(pool): State<deadpool_diesel::postgres::Pool>,
-//     Json(payload): Json<GetExerciseDataPayload>,
-// ) -> Result<Json<GetExerciseDataResponse>, (StatusCode, String)> {
-//     let conn = pool.get().await.map_err(utils::internal_error)?;
-//     let mut exercise = conn
-//         .interact(move |conn| {
-//             exercises::table
-//                 .filter(exercises::id.eq(payload.exercise_id))
-//                 .select(Exercise::as_select())
-//                 .first(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     let player_unlock = conn
-//         .interact(move |conn| {
-//             playerunlocks::table
-//                 .filter(playerunlocks::player.eq(payload.player_id))
-//                 .filter(playerunlocks::exercise.eq(payload.exercise_id))
-//                 .select(PlayerUnlock::as_select())
-//                 .load(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     let res_game = conn
-//         .interact(move |conn| {
-//             games::table
-//                 .filter(games::id.eq(payload.game_id))
-//                 .select(Game::as_select())
-//                 .first(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     exercise.hidden = exercise.hidden && player_unlock.is_empty();
-//     exercise.locked = (exercise.locked || res_game.exerciselock) && player_unlock.is_empty(); //todo helper functions from mail
-//     Ok(Json(GetExerciseDataResponse::new(exercise)))
-// }
-//
-// pub async fn submit_solution(
-//     State(pool): State<deadpool_diesel::postgres::Pool>,
-//     Json(payload): Json<SubmitSolutionPayload>,
-// ) -> Result<Json<SubmitSolutionResponse>, (StatusCode, String)> {
-//     let conn = pool.get().await.map_err(utils::internal_error)?;
-//     let res = conn
-//         .interact(move |conn| {
-//             submissions::table
-//                 .filter(submissions::player.eq(payload.player_id))
-//                 .filter(submissions::exercise.eq(payload.exercise_id))
-//                 .select(Submission::as_select())
-//                 .load(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     let _ = conn
-//         .interact(move |conn| {
-//             diesel::insert_into(submissions::table)
-//                 .values(NewSubmission::new(
-//                     payload.exercise_id,
-//                     payload.player_id,
-//                     payload.submission_client,
-//                     payload.submission_submitted_code,
-//                     payload.submission_metrics,
-//                     payload.submission_result,
-//                     payload.submission_result_description,
-//                     payload.submission_feedback,
-//                     payload.submission_earned_rewards,
-//                     payload.submission_entered_at,
-//                     Utc::now().date_naive()
-//                 ))
-//                 .returning(Submission::as_returning())
-//                 .get_result(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     if res.is_empty() {
-//         let module = conn
-//             .interact(move |conn| {
-//                 exercises::table
-//                     .inner_join(modules::table.on(exercises::module.eq(modules::id)))
-//                     .filter(exercises::id.eq(payload.exercise_id))
-//                     .select(Module::as_select())
-//                     .first(conn)
-//             })
-//             .await
-//             .map_err(utils::internal_error)?
-//             .map_err(utils::internal_error)?;
-//
-//         let game_res = conn
-//             .interact(move |conn| {
-//                 games::table
-//                     .filter(games::course.eq(module.course))
-//                     .select(Game::as_select())
-//                     .first(conn)
-//             })
-//             .await
-//             .map_err(utils::internal_error)?
-//             .map_err(utils::internal_error)?;
-//
-//         let _ = conn
-//             .interact(move |conn| {
-//                 diesel::update(playerregistrations::table)
-//                     .filter(playerregistrations::player.eq(payload.player_id))
-//                     .filter(playerregistrations::game.eq(game_res.id))
-//                     .set((
-//                         playerregistrations::progress.eq(playerregistrations::progress + 1),
-//                     ))
-//                     .execute(conn)
-//             })
-//             .await
-//             .map_err(utils::internal_error)?
-//             .map_err(utils::internal_error)?;
-//
-//         //todo update playerrewards
-//     }
-//     Ok(Json(SubmitSolutionResponse::new(res.is_empty())))
-// }
-//
-// pub async fn unlock(
-//     State(pool): State<deadpool_diesel::postgres::Pool>,
-//     Json(payload): Json<UnlockPayload>,
-// ) -> Result<Json<()>, (StatusCode, String)> {
-//     let conn = pool.get().await.map_err(utils::internal_error)?;
-//     let _ = conn
-//         .interact(move |conn| {
-//             diesel::insert_into(playerunlocks::table)
-//                 .values(PlayerUnlock::new(payload.player_id, payload.exercise_id, Utc::now().date_naive()))
-//                 .returning(PlayerUnlock::as_returning())
-//                 .get_result(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     Ok(Json(())) //todo revise
-// }
-//
-// pub async fn get_last_solution(
-//     State(pool): State<deadpool_diesel::postgres::Pool>,
-//     Json(_): Json<GetLastSolutionPayload>,
-// ) -> Result<Json<GetLastSolutionResponse>, (StatusCode, String)> {
-//     let conn = pool.get().await.map_err(utils::internal_error)?;
-//     let res = conn
-//         .interact(move |conn| {
-//             submissions::table
-//                 .order(submissions::id.desc())
-//                 .select(Submission::as_select())
-//                 .first(conn)
-//         })
-//         .await
-//         .map_err(utils::internal_error)?
-//         .map_err(utils::internal_error)?;
-//     Ok(Json(GetLastSolutionResponse::new(
-//         res.submittedcode,
-//         res.metrics,
-//         res.result,
-//         res.resultdescription,
-//         res.feedback
-//     )))//todo revise
-// }
