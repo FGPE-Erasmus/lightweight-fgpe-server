@@ -1,5 +1,33 @@
-use chrono::NaiveDate;
 use crate::model::{Exercise, Game, PlayerRegistration};
+use axum::http::StatusCode;
+use chrono::NaiveDate;
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct ApiResponseCore<T> {
+    pub(super) status_text: String,
+    pub(super) status_code: u16,
+    pub(super) data: Option<T>
+}
+
+impl<T> ApiResponseCore<T> {
+    pub fn new(status_text: String, status_code: StatusCode, data: T) -> Self {
+        Self { status_text, status_code: status_code.as_u16(), data: Some(data) }
+    }
+    pub fn ok(data: T) -> Self {
+        Self {
+            status_text: "OK".to_string(),
+            status_code: 200,
+            data: Some(data)
+        }
+    }
+    pub fn err(payload: (StatusCode, String)) -> Self {
+        Self {
+            status_text: payload.1,
+            status_code: payload.0.as_u16(),
+            data: None
+        }
+    }
+}
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetAvailableGamesResponse {
