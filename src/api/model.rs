@@ -6,32 +6,36 @@ use chrono::NaiveDate;
 pub struct ApiResponseCore<T> {
     pub(super) status_text: String,
     pub(super) status_code: u16,
-    pub(super) data: Option<T>
+    pub(super) data: Option<T>,
 }
 
 impl<T> ApiResponseCore<T> {
     pub fn new(status_text: String, status_code: StatusCode, data: T) -> Self {
-        Self { status_text, status_code: status_code.as_u16(), data: Some(data) }
+        Self {
+            status_text,
+            status_code: status_code.as_u16(),
+            data: Some(data),
+        }
     }
     pub fn ok(data: T) -> Self {
         Self {
             status_text: "OK".to_string(),
             status_code: 200,
-            data: Some(data)
+            data: Some(data),
         }
     }
     pub fn err(payload: (StatusCode, String)) -> Self {
         Self {
             status_text: payload.1,
             status_code: payload.0.as_u16(),
-            data: None
+            data: None,
         }
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetAvailableGamesResponse {
-    games: Vec<Game>
+    games: Vec<Game>,
 }
 
 impl GetAvailableGamesResponse {
@@ -44,29 +48,31 @@ impl GetAvailableGamesResponse {
 pub struct JoinGamePayload {
     pub(super) player_id: i32,
     pub(super) game_id: i32,
-    pub(super) language: Option<String>
+    pub(super) language: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct JoinGameResponse {
-    player_registration_id: Option<i32>
+    player_registration_id: Option<i32>,
 }
 
 impl JoinGameResponse {
     pub fn new(player_registration_id: Option<i32>) -> Self {
-        Self { player_registration_id }
+        Self {
+            player_registration_id,
+        }
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct SaveGamePayload {
     pub(super) player_registration_id: i32,
-    pub(super) game_state: String
+    pub(super) game_state: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct SaveGameResponse {
-    saved: bool
+    saved: bool,
 }
 
 impl SaveGameResponse {
@@ -77,12 +83,12 @@ impl SaveGameResponse {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct LoadGamePayload {
-    pub(super) player_registration_id: i32
+    pub(super) player_registration_id: i32,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct LoadGameResponse {
-    game_state: String
+    game_state: String,
 }
 
 impl LoadGameResponse {
@@ -94,12 +100,12 @@ impl LoadGameResponse {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct LeaveGamePayload {
     pub(super) player_id: i32,
-    pub(super) game_id: i32
+    pub(super) game_id: i32,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct LeaveGameResponse {
-    left: bool
+    left: bool,
 }
 
 impl LeaveGameResponse {
@@ -112,12 +118,12 @@ impl LeaveGameResponse {
 pub struct SetGameLangPayload {
     pub(super) player_id: i32,
     pub(super) game_id: i32,
-    pub(super) language: String
+    pub(super) language: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct SetGameLangResponse {
-    set: bool
+    set: bool,
 }
 
 impl SetGameLangResponse {
@@ -134,7 +140,7 @@ pub struct GetPlayerGamesPayload {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetPlayerGamesResponse {
-    games: Vec<i32>
+    games: Vec<i32>,
 }
 
 impl GetPlayerGamesResponse {
@@ -145,12 +151,12 @@ impl GetPlayerGamesResponse {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetGameMetadataPayload {
-    pub(super) player_registrations_id: i32
+    pub(super) player_registrations_id: i32,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetGameMetadataResponse {
-    data: (PlayerRegistration, Game)
+    data: (PlayerRegistration, Game),
 }
 
 impl GetGameMetadataResponse {
@@ -162,7 +168,7 @@ impl GetGameMetadataResponse {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetCourseDataPayload {
     pub(super) game_id: i32,
-    pub(super) language: String
+    pub(super) language: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -170,13 +176,22 @@ pub struct GetCourseDataResponse {
     course_gamification_rule_conditions: String,
     gamification_complex_rules: String,
     gamification_rule_results: String,
-    modules: Vec<i32>
+    modules: Vec<i32>,
 }
 
 impl GetCourseDataResponse {
-    pub fn new(course_gamification_rule_conditions: String, gamification_complex_rules: String,
-               gamification_rule_results: String, modules: Vec<i32>) -> Self {
-        Self { course_gamification_rule_conditions, gamification_complex_rules, gamification_rule_results, modules }
+    pub fn new(
+        course_gamification_rule_conditions: String,
+        gamification_complex_rules: String,
+        gamification_rule_results: String,
+        modules: Vec<i32>,
+    ) -> Self {
+        Self {
+            course_gamification_rule_conditions,
+            gamification_complex_rules,
+            gamification_rule_results,
+            modules,
+        }
     }
 }
 
@@ -184,7 +199,7 @@ impl GetCourseDataResponse {
 pub struct GetModuleDataPayload {
     pub(super) module_id: i32,
     pub(super) language: String,
-    pub(super) programming_language: String
+    pub(super) programming_language: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -194,13 +209,26 @@ pub struct GetModuleDataResponse {
     module_description: String,
     module_start_date: NaiveDate,
     module_end_date: NaiveDate,
-    exercises: Vec<i32>
+    exercises: Vec<i32>,
 }
 
 impl GetModuleDataResponse {
-    pub fn new(module_order: i32, module_title: String, module_description: String,
-               module_start_date: NaiveDate, module_end_date: NaiveDate, exercises: Vec<i32>) -> Self {
-        Self { module_order, module_title, module_description, module_start_date, module_end_date, exercises }
+    pub fn new(
+        module_order: i32,
+        module_title: String,
+        module_description: String,
+        module_start_date: NaiveDate,
+        module_end_date: NaiveDate,
+        exercises: Vec<i32>,
+    ) -> Self {
+        Self {
+            module_order,
+            module_title,
+            module_description,
+            module_start_date,
+            module_end_date,
+            exercises,
+        }
     }
 }
 
@@ -208,12 +236,12 @@ impl GetModuleDataResponse {
 pub struct GetExerciseDataPayload {
     pub(super) exercise_id: i32,
     pub(super) game_id: i32,
-    pub(super) player_id: i32
+    pub(super) player_id: i32,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetExerciseDataResponse {
-    exercise: Exercise
+    exercise: Exercise,
 }
 
 impl GetExerciseDataResponse {
@@ -233,12 +261,12 @@ pub struct SubmitSolutionPayload {
     pub(super) submission_result_description: String,
     pub(super) submission_feedback: String,
     pub(super) submission_entered_at: NaiveDate,
-    pub(super) submission_earned_rewards: String
+    pub(super) submission_earned_rewards: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct SubmitSolutionResponse {
-    first_submission: bool
+    first_submission: bool,
 }
 
 impl SubmitSolutionResponse {
@@ -250,7 +278,7 @@ impl SubmitSolutionResponse {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct UnlockPayload {
     pub(super) exercise_id: i32,
-    pub(super) player_id: i32
+    pub(super) player_id: i32,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -264,7 +292,7 @@ pub struct GetLastSolutionPayload {
     pub(super) submission_result_description: String,
     pub(super) submission_feedback: String,
     pub(super) submission_entered_at: NaiveDate,
-    pub(super) submission_earned_rewards: String
+    pub(super) submission_earned_rewards: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -273,11 +301,23 @@ pub struct GetLastSolutionResponse {
     pub(super) submission_metrics: String,
     pub(super) submission_result: f64,
     pub(super) submission_result_description: String,
-    pub(super) submission_feedback: String
+    pub(super) submission_feedback: String,
 }
 
 impl GetLastSolutionResponse {
-    pub fn new(submission_submitted_code: String, submission_metrics: String, submission_result: f64, submission_result_description: String, submission_feedback: String) -> Self {
-        Self { submission_submitted_code, submission_metrics, submission_result, submission_result_description, submission_feedback }
+    pub fn new(
+        submission_submitted_code: String,
+        submission_metrics: String,
+        submission_result: f64,
+        submission_result_description: String,
+        submission_feedback: String,
+    ) -> Self {
+        Self {
+            submission_submitted_code,
+            submission_metrics,
+            submission_result,
+            submission_result_description,
+            submission_feedback,
+        }
     }
 }

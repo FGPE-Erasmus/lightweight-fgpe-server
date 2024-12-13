@@ -1,4 +1,10 @@
-use crate::api::model::{ApiResponseCore, GetAvailableGamesResponse, GetCourseDataPayload, GetCourseDataResponse, GetGameMetadataPayload, GetGameMetadataResponse, GetModuleDataPayload, GetModuleDataResponse, GetPlayerGamesPayload, GetPlayerGamesResponse, JoinGamePayload, JoinGameResponse, LeaveGamePayload, LeaveGameResponse, LoadGamePayload, LoadGameResponse, SaveGamePayload, SaveGameResponse, SetGameLangPayload, SetGameLangResponse};
+use crate::api::model::{
+    ApiResponseCore, GetAvailableGamesResponse, GetCourseDataPayload, GetCourseDataResponse,
+    GetGameMetadataPayload, GetGameMetadataResponse, GetModuleDataPayload, GetModuleDataResponse,
+    GetPlayerGamesPayload, GetPlayerGamesResponse, JoinGamePayload, JoinGameResponse,
+    LeaveGamePayload, LeaveGameResponse, LoadGamePayload, LoadGameResponse, SaveGamePayload,
+    SaveGameResponse, SetGameLangPayload, SetGameLangResponse,
+};
 use crate::model::{Course, Game, Module, NewPlayerRegistration, PlayerRegistration};
 use crate::schema::games::{active, public};
 use crate::schema::playerregistrations::{game, gamestate, id, language, leftat, player, savedat};
@@ -22,14 +28,15 @@ where
     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }
 
-async fn run_query<T, F>(pool: &deadpool_diesel::postgres::Pool, query: F) -> Result<T, (StatusCode, String)>
+async fn run_query<T, F>(
+    pool: &deadpool_diesel::postgres::Pool,
+    query: F,
+) -> Result<T, (StatusCode, String)>
 where
     F: FnOnce(&mut diesel::PgConnection) -> Result<T, diesel::result::Error> + Send + 'static,
     T: Send + 'static,
 {
-    let conn = pool.get()
-        .await
-        .map_err(internal_error)?;
+    let conn = pool.get().await.map_err(internal_error)?;
     conn.interact(query)
         .await
         .map_err(internal_error)
@@ -47,10 +54,11 @@ pub async fn get_available_games(
             .filter(public.eq(true))
             .select(Game::as_select())
             .load(conn)
-    }).await;
+    })
+    .await;
     match games_res {
         Ok(games) => Json(ApiResponseCore::ok(GetAvailableGamesResponse::new(games))),
-        Err(err) => Json(ApiResponseCore::err(err))
+        Err(err) => Json(ApiResponseCore::err(err)),
     }
 }
 
@@ -64,7 +72,8 @@ pub async fn join_game(
             .filter(game.eq(payload.game_id))
             .select(PlayerRegistration::as_select())
             .first(conn)
-    }).await;
+    })
+    .await;
     if result.is_ok() {
         return Json(ApiResponseCore::ok(JoinGameResponse::new(None)));
     }
@@ -84,10 +93,11 @@ pub async fn join_game(
             .values(registration)
             .returning(PlayerRegistration::as_returning())
             .get_result(conn)
-    }).await;
+    })
+    .await;
     match result {
         Ok(pr) => Json(ApiResponseCore::ok(JoinGameResponse::new(Some(pr.id)))),
-        Err(_) => Json(ApiResponseCore::ok(JoinGameResponse::new(None)))
+        Err(_) => Json(ApiResponseCore::ok(JoinGameResponse::new(None))),
     }
 }
 
@@ -102,10 +112,13 @@ pub async fn save_game(
                 savedat.eq(Utc::now().date_naive()),
             ))
             .execute(conn)
-    }).await;
+    })
+    .await;
     match result {
-        Ok(rows_updated) => Json(ApiResponseCore::ok(SaveGameResponse::new(rows_updated == 1))),
-        Err(_) => Json(ApiResponseCore::ok(SaveGameResponse::new(false)))
+        Ok(rows_updated) => Json(ApiResponseCore::ok(SaveGameResponse::new(
+            rows_updated == 1,
+        ))),
+        Err(_) => Json(ApiResponseCore::ok(SaveGameResponse::new(false))),
     }
 }
 
@@ -118,10 +131,11 @@ pub async fn load_game(
             .filter(id.eq(payload.player_registration_id))
             .select(PlayerRegistration::as_select())
             .first(conn)
-    }).await;
+    })
+    .await;
     match result {
         Ok(pr) => Json(ApiResponseCore::ok(LoadGameResponse::new(pr.gamestate))),
-        Err(_) => Json(ApiResponseCore::ok(LoadGameResponse::new(String::new())))
+        Err(_) => Json(ApiResponseCore::ok(LoadGameResponse::new(String::new()))),
     }
 }
 
@@ -135,18 +149,20 @@ pub async fn leave_game(
             .filter(game.eq(payload.game_id))
             .select(PlayerRegistration::as_select())
             .first(conn)
-    }).await;
+    })
+    .await;
     if let Err(err) = registration {
-        return Json(ApiResponseCore::err(err))
+        return Json(ApiResponseCore::err(err));
     }
     let rows_updated = run_query(&pool, move |conn| {
         diesel::update(playerregistrations::table.find(registration.unwrap().id))
             .set(leftat.eq(Utc::now().date_naive()))
             .execute(conn)
-    }).await;
+    })
+    .await;
     match rows_updated {
         Ok(rows) => Json(ApiResponseCore::ok(LeaveGameResponse::new(rows == 1))),
-        Err(_) => Json(ApiResponseCore::ok(LeaveGameResponse::new(false)))
+        Err(_) => Json(ApiResponseCore::ok(LeaveGameResponse::new(false))),
     }
 }
 
@@ -159,43 +175,50 @@ pub async fn set_game_lang(
             .filter(games::id.eq(payload.game_id))
             .select(Game::as_select())
             .first(conn)
-    }).await;
+    })
+    .await;
     if let Err(err) = game_result {
-        return Json(ApiResponseCore::err(err))
+        return Json(ApiResponseCore::err(err));
     }
     let course_result = run_query(&pool, move |conn| {
         courses::table
             .filter(courses::id.eq(game_result.unwrap().course))
             .select(Course::as_select())
             .first(conn)
-    }).await;
+    })
+    .await;
     if let Err(err) = course_result {
-        return Json(ApiResponseCore::err(err))
+        return Json(ApiResponseCore::err(err));
     }
-    if course_result.unwrap().languages
+    if course_result
+        .unwrap()
+        .languages
         .replace(" ", "")
         .split(',')
-        .any(|lang| lang == payload.language) {
-            let registration_result = run_query(&pool, move |conn| {
-                playerregistrations::table
-                    .filter(player.eq(payload.player_id))
-                    .filter(game.eq(payload.game_id))
-                    .select(PlayerRegistration::as_select())
-                    .first(conn)
-            }).await;
-            if let Err(err) = registration_result {
-                return Json(ApiResponseCore::err(err))
-            }
-            let rows_updated = run_query(&pool, move |conn| {
-                diesel::update(playerregistrations::table.find(registration_result.unwrap().id))
-                    .set(language.eq(payload.language))
-                    .execute(conn)
-            }).await;
-            match rows_updated {
-                Ok(rows) => Json(ApiResponseCore::ok(SetGameLangResponse::new(rows == 1))),
-                Err(err) => Json(ApiResponseCore::err(err))
-            }
-        } else {
+        .any(|lang| lang == payload.language)
+    {
+        let registration_result = run_query(&pool, move |conn| {
+            playerregistrations::table
+                .filter(player.eq(payload.player_id))
+                .filter(game.eq(payload.game_id))
+                .select(PlayerRegistration::as_select())
+                .first(conn)
+        })
+        .await;
+        if let Err(err) = registration_result {
+            return Json(ApiResponseCore::err(err));
+        }
+        let rows_updated = run_query(&pool, move |conn| {
+            diesel::update(playerregistrations::table.find(registration_result.unwrap().id))
+                .set(language.eq(payload.language))
+                .execute(conn)
+        })
+        .await;
+        match rows_updated {
+            Ok(rows) => Json(ApiResponseCore::ok(SetGameLangResponse::new(rows == 1))),
+            Err(err) => Json(ApiResponseCore::err(err)),
+        }
+    } else {
         Json(ApiResponseCore::ok(SetGameLangResponse::new(false)))
     }
 }
@@ -219,10 +242,11 @@ pub async fn get_player_games(
                 .select(id)
                 .load(conn)
         }
-    }).await;
+    })
+    .await;
     match games_result {
         Ok(gr) => Json(ApiResponseCore::ok(GetPlayerGamesResponse::new(gr))),
-        Err(err) => Json(ApiResponseCore::err(err))
+        Err(err) => Json(ApiResponseCore::err(err)),
     }
 }
 
@@ -236,10 +260,11 @@ pub async fn get_game_metadata(
             .filter(id.eq(payload.player_registrations_id))
             .select((PlayerRegistration::as_select(), Game::as_select()))
             .first(conn)
-    }).await;
+    })
+    .await;
     match metadata_result {
         Ok(mr) => Json(ApiResponseCore::ok(GetGameMetadataResponse::new(mr))),
-        Err(err) => Json(ApiResponseCore::err(err))
+        Err(err) => Json(ApiResponseCore::err(err)),
     }
 }
 
@@ -252,18 +277,20 @@ pub async fn get_course_data(
             .filter(games::id.eq(payload.game_id))
             .select(Game::as_select())
             .first(conn)
-    }).await;
+    })
+    .await;
     if let Err(err) = game_result {
-        return Json(ApiResponseCore::err(err))
+        return Json(ApiResponseCore::err(err));
     }
     let course_result = run_query(&pool, move |conn| {
         courses::table
             .filter(courses::id.eq(game_result.unwrap().course))
             .select(Course::as_select())
             .first(conn)
-    }).await;
+    })
+    .await;
     if let Err(err) = course_result {
-        return Json(ApiResponseCore::err(err))
+        return Json(ApiResponseCore::err(err));
     }
     let course_result = course_result.unwrap();
     let modules_result = run_query(&pool, move |conn| {
@@ -272,7 +299,8 @@ pub async fn get_course_data(
             .filter(modules::language.eq(payload.language))
             .select(modules::id)
             .load(conn)
-    }).await;
+    })
+    .await;
     match modules_result {
         Ok(mr) => Json(ApiResponseCore::ok(GetCourseDataResponse::new(
             course_result.gamificationruleconditions,
@@ -280,7 +308,7 @@ pub async fn get_course_data(
             course_result.gamificationruleresults,
             mr,
         ))),
-        Err(err) => Json(ApiResponseCore::err(err))
+        Err(err) => Json(ApiResponseCore::err(err)),
     }
 }
 
@@ -289,12 +317,14 @@ pub async fn get_module_data(
     Json(payload): Json<GetModuleDataPayload>,
 ) -> ApiResponse<GetModuleDataResponse> {
     let module = run_query(&pool, move |conn| {
-        modules::table.find(payload.module_id)
+        modules::table
+            .find(payload.module_id)
             .select(Module::as_select())
             .first(conn)
-    }).await;
+    })
+    .await;
     if let Err(err) = module {
-        return Json(ApiResponseCore::err(err))
+        return Json(ApiResponseCore::err(err));
     }
     let module = module.unwrap();
     let exercises = run_query(&pool, move |conn| {
@@ -304,11 +334,17 @@ pub async fn get_module_data(
             .filter(exercises::language.eq(payload.language))
             .select(exercises::id)
             .load(conn)
-    }).await;
+    })
+    .await;
     match exercises {
         Ok(ex) => Json(ApiResponseCore::ok(GetModuleDataResponse::new(
-            module.order, module.title, module.description, module.startdate, module.enddate, ex
+            module.order,
+            module.title,
+            module.description,
+            module.startdate,
+            module.enddate,
+            ex,
         ))),
-        Err(err) => Json(ApiResponseCore::err(err))
+        Err(err) => Json(ApiResponseCore::err(err)),
     }
 }

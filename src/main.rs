@@ -1,8 +1,8 @@
+use axum::routing::{get, post};
+use axum::Router;
+use deadpool_diesel::postgres::Pool;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use axum::Router;
-use axum::routing::{get, post};
-use deadpool_diesel::postgres::Pool;
 
 mod api;
 mod model;

@@ -1,6 +1,6 @@
+use crate::schema::*;
 use chrono::NaiveDate;
 use diesel::prelude::*;
-use crate::schema::*;
 
 #[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
 pub struct Course {
@@ -87,11 +87,32 @@ pub struct NewSubmission {
 }
 
 impl NewSubmission {
-    pub fn new(exercise: i32, player: i32, client: String, submittedcode: String, metrics: String,
-               result: f64, resultdescription: String, feedback: String, earnedrewards: String,
-               enteredat: NaiveDate, submittedat: NaiveDate) -> Self {
-        Self { exercise, player, client, submittedcode, metrics, result, resultdescription,
-            feedback, earnedrewards, enteredat, submittedat }
+    pub fn new(
+        exercise: i32,
+        player: i32,
+        client: String,
+        submittedcode: String,
+        metrics: String,
+        result: f64,
+        resultdescription: String,
+        feedback: String,
+        earnedrewards: String,
+        enteredat: NaiveDate,
+        submittedat: NaiveDate,
+    ) -> Self {
+        Self {
+            exercise,
+            player,
+            client,
+            submittedcode,
+            metrics,
+            result,
+            resultdescription,
+            feedback,
+            earnedrewards,
+            enteredat,
+            submittedat,
+        }
     }
 }
 
@@ -148,7 +169,11 @@ pub struct PlayerUnlock {
 
 impl PlayerUnlock {
     pub fn new(player: i32, exercise: i32, unlockedat: NaiveDate) -> Self {
-        Self { player, exercise, unlockedat }
+        Self {
+            player,
+            exercise,
+            unlockedat,
+        }
     }
 }
 
@@ -202,9 +227,26 @@ pub struct NewPlayerRegistration {
 }
 
 impl NewPlayerRegistration {
-    pub fn new(player: i32, game: i32, language: String, progress: i32, gamestate: String,
-               savedat: NaiveDate, joinedat: NaiveDate, leftat: Option<NaiveDate>) -> Self {
-        Self { player, game, language, progress, gamestate, savedat, joinedat, leftat }
+    pub fn new(
+        player: i32,
+        game: i32,
+        language: String,
+        progress: i32,
+        gamestate: String,
+        savedat: NaiveDate,
+        joinedat: NaiveDate,
+        leftat: Option<NaiveDate>,
+    ) -> Self {
+        Self {
+            player,
+            game,
+            language,
+            progress,
+            gamestate,
+            savedat,
+            joinedat,
+            leftat,
+        }
     }
 }
 
