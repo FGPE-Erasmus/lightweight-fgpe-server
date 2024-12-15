@@ -22,10 +22,16 @@ Building:
     2. execute build command `cargo build --release` for optimized version, omit `--release` otherwise
     3. enjoy executable from `/target` directory
 
-Notes:
+Usage:
 
-- Temporarily assumes "postgresql://postgres:admin@localhost:5432/gam2" DB connection
-- Serves at localhost:3000
+```
+lightweight-fgpe-server.exe [OPTIONS] --connection-str <CONNECTION_STR>
+
+Options:
+-c, --connection-str <CONNECTION_STR>
+-s, --server-url <SERVER_URL>          [default: 127.0.0.1:3000]
+-h, --help                             Print help
+```
 
 ## API
 ### Response format
@@ -45,7 +51,7 @@ Notes:
 - Method: `GET`
 - Payload: `None`
 - Response:
-```json
+```
 {
   "status_text": "OK",
   "status_code": 200,
@@ -76,7 +82,7 @@ Notes:
 - URL: `/join_game`
 - Method: `POST`
 - Payload:
-```json
+```
 {
   "player_id": 1,
   "game_id": 1,
@@ -84,7 +90,7 @@ Notes:
 }
 ```
 - Response:
-```json
+```
 {
   "status_text": "OK",
   "status_code": 200,
@@ -98,14 +104,14 @@ Notes:
 - URL: `/save_game`
 - Method: `POST`
 - Payload:
-```json
+```
 {
   "player_registration_id": 1,
   "game_state": "string"
 }
 ```
 - Response:
-```json
+```
 {
   "status_text": "OK",
   "status_code": 200,
@@ -119,13 +125,13 @@ Notes:
 - URL: `/load_game`
 - Method: `POST`
 - Payload:
-```json
+```
 {
   "player_registration_id": 1
 }
 ```
 - Response:
-```json
+```
 {
   "status_text": "OK",
   "status_code": 200,
@@ -139,14 +145,14 @@ Notes:
 - URL: `/leave_game`
 - Method: `POST`
 - Payload:
-```json
+```
 {
   "player_id": 1,
   "game_id": 1
 }
 ```
 - Response:
-```json
+```
 {
   "status_text": "OK",
   "status_code": 200,
@@ -160,7 +166,7 @@ Notes:
 - URL: `/set_game_lang`
 - Method: `POST`
 - Payload:
-```json
+```
 {
   "player_id": 1,
   "game_id": 1,
@@ -168,7 +174,7 @@ Notes:
 }
 ```
 - Response:
-```json
+```
 {
   "status_text": "OK",
   "status_code": 200,
@@ -182,14 +188,14 @@ Notes:
 - URL: `/get_player_games`
 - Method: `POST`
 - Payload:
-```json
+```
 {
   "player_id": 1,
   "active": true
 }
 ```
 - Response:
-```json
+```
 {
   "status_text": "OK",
   "status_code": 200,
@@ -203,13 +209,13 @@ Notes:
 - URL: `/get_game_metadata`
 - Method: `POST`
 - Payload:
-```json
+```
 {
   "player_registrations_id": 1
 }
 ```
 - Response:
-```json
+```
 {
   "status_text": "OK",
   "status_code": 200,
@@ -230,14 +236,14 @@ Notes:
 - URL: `/get_course_data`
 - Method: `POST`
 - Payload:
-```json
+```
 {
   "game_id": 1,
   "language": "string"
 }
 ```
 - Response:
-```json
+```
 {
   "status_text": "OK",
   "status_code": 200,
@@ -254,7 +260,7 @@ Notes:
 - URL: `/get_module_data`
 - Method: `POST`
 - Payload:
-```json
+```
 {
   "module_id": 1,
   "language": "string",
@@ -262,7 +268,7 @@ Notes:
 }
 ```
 - Response:
-```json
+```
 {
   "status_text": "OK",
   "status_code": 200,

@@ -1,32 +1,35 @@
+use crate::cli::Args;
 use axum::routing::{get, post};
 use axum::Router;
+use clap::Parser;
 use deadpool_diesel::postgres::Pool;
 use std::net::SocketAddr;
 use std::str::FromStr;
 
 mod api;
+mod cli;
 mod model;
 mod schema;
 
-const DB_URL: &str = "postgresql://postgres:admin@localhost:5432/gam2";
-const SERVER_URL: &str = "127.0.0.1:3000";
-
 #[tokio::main]
 async fn main() {
+    let args = Args::parse();
+
     init_tracing();
 
-    let pool = init_pool();
+    let pool = init_pool(&args.connection_str);
     let router = init_router(pool);
 
-    run(router).await
+    run(router, &args.server_url).await
 }
 
 fn init_tracing() {
     tracing_subscriber::fmt::init();
 }
 
-fn init_pool() -> Pool {
-    let manager = deadpool_diesel::postgres::Manager::new(DB_URL, deadpool_diesel::Runtime::Tokio1);
+fn init_pool(conn_str: &str) -> Pool {
+    let manager =
+        deadpool_diesel::postgres::Manager::new(conn_str, deadpool_diesel::Runtime::Tokio1);
     Pool::builder(manager)
         .build()
         .expect("should be able to build db conn pool in normal circumstances")
@@ -51,8 +54,8 @@ fn init_router(pool: Pool) -> Router {
         .with_state(pool)
 }
 
-async fn run(router: Router) {
-    let addr = SocketAddr::from_str(SERVER_URL).unwrap();
+async fn run(router: Router, server_url: &str) {
+    let addr = SocketAddr::from_str(server_url).unwrap();
     tracing::debug!("listening on {addr}");
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, router).await.unwrap();
