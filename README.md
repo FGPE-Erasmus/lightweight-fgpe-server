@@ -14,7 +14,7 @@ Simple backend providing connection between database and clients.
 
 Prerequisites:
 - [Rust](https://www.rust-lang.org/learn/get-started)
-- PostgreSQL (17+)
+- PostgreSQL (17+) - sample local database dump is located in `/db` directory
 
 Building:
 
