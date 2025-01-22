@@ -134,8 +134,10 @@ pub async fn load_game(
     })
     .await;
     match result {
-        Ok(pr) => Json(ApiResponseCore::ok(LoadGameResponse::new(pr.gamestate))),
-        Err(_) => Json(ApiResponseCore::ok(LoadGameResponse::new(String::new()))),
+        Ok(pr) => Json(ApiResponseCore::ok(LoadGameResponse::new(pr.id, pr.gamestate))),
+        Err(_) => Json(ApiResponseCore::err(
+            (StatusCode::INTERNAL_SERVER_ERROR, "could not get player registration".to_string())
+        )),
     }
 }
 

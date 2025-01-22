@@ -88,12 +88,13 @@ pub struct LoadGamePayload {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct LoadGameResponse {
+    player_registration_id: i32,
     game_state: String,
 }
 
 impl LoadGameResponse {
-    pub fn new(game_state: String) -> Self {
-        Self { game_state }
+    pub fn new(player_registration_id: i32, game_state: String) -> Self {
+        Self { player_registration_id, game_state }
     }
 }
 
