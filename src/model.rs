@@ -1,5 +1,5 @@
 use crate::schema::*;
-use chrono::NaiveDate;
+use chrono::{Duration, NaiveDate};
 use diesel::prelude::*;
 
 #[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
@@ -185,6 +185,7 @@ pub struct Reward {
     pub description: String,
     pub messagewhenwon: String,
     pub imageurl: String,
+    pub validperiod: Duration
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
@@ -197,6 +198,24 @@ pub struct PlayerReward {
     pub usedcount: i32,
     pub obtainedat: NaiveDate,
     pub expiresat: NaiveDate,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Insertable)]
+#[diesel(table_name = playerrewards)]
+pub struct NewPlayerReward {
+    pub player: i32,
+    pub reward: i32,
+    pub game: Option<i32>,
+    pub count: i32,
+    pub usedcount: i32,
+    pub obtainedat: NaiveDate,
+    pub expiresat: NaiveDate,
+}
+
+impl NewPlayerReward {
+    pub fn new(player: i32, reward: i32, game: Option<i32>, count: i32, usedcount: i32, obtainedat: NaiveDate, expiresat: NaiveDate) -> Self {
+        Self { player, reward, game, count, usedcount, obtainedat, expiresat }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Selectable, Queryable)]
@@ -250,5 +269,4 @@ impl NewPlayerRegistration {
     }
 }
 
-allow_tables_to_appear_in_same_query!(playerregistrations, games);
-allow_tables_to_appear_in_same_query!(modules, exercises);
+allow_tables_to_appear_in_same_query!(playerregistrations, games, modules, exercises, submissions);

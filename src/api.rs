@@ -1,19 +1,15 @@
-use crate::api::model::{
-    ApiResponseCore, GetAvailableGamesResponse, GetCourseDataPayload, GetCourseDataResponse,
-    GetGameMetadataPayload, GetGameMetadataResponse, GetModuleDataPayload, GetModuleDataResponse,
-    GetPlayerGamesPayload, GetPlayerGamesResponse, JoinGamePayload, JoinGameResponse,
-    LeaveGamePayload, LeaveGameResponse, LoadGamePayload, LoadGameResponse, SaveGamePayload,
-    SaveGameResponse, SetGameLangPayload, SetGameLangResponse,
-};
-use crate::model::{Course, Game, Module, NewPlayerRegistration, PlayerRegistration};
+use crate::api::model::{ApiResponseCore, GetAvailableGamesResponse, GetCourseDataPayload, GetCourseDataResponse, GetExerciseDataPayload, GetExerciseDataResponse, GetGameMetadataPayload, GetGameMetadataResponse, GetLastSolutionPayload, GetLastSolutionResponse, GetModuleDataPayload, GetModuleDataResponse, GetPlayerGamesPayload, GetPlayerGamesResponse, JoinGamePayload, JoinGameResponse, LeaveGamePayload, LeaveGameResponse, LoadGamePayload, LoadGameResponse, SaveGamePayload, SaveGameResponse, SetGameLangPayload, SetGameLangResponse, SubmitSolutionPayload, SubmitSolutionResponse, UnlockPayload};
+use crate::model::{Course, Exercise, Game, Module, NewPlayerRegistration, NewPlayerReward, NewSubmission, PlayerRegistration, PlayerUnlock, Reward, Submission};
 use crate::schema::games::{active, public};
 use crate::schema::playerregistrations::{game, gamestate, id, language, leftat, player, savedat};
-use crate::schema::{courses, exercises, games, modules, playerregistrations};
+use crate::schema::{courses, exercises, games, modules, playerregistrations, playerrewards, rewards, submissions};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
 use chrono::Utc;
-use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, RunQueryDsl, SelectableHelper};
+use deadpool_diesel::postgres::Pool;
+use diesel::{ExpressionMethods, JoinOnDsl, OptionalExtension, QueryDsl, RunQueryDsl, SelectableHelper};
+use crate::schema::playerunlocks;
 
 mod model;
 
@@ -347,6 +343,269 @@ pub async fn get_module_data(
             module.enddate,
             ex,
         ))),
+        Err(err) => Json(ApiResponseCore::err(err)),
+    }
+}
+
+pub async fn get_exercise_data(
+    State(pool): State<deadpool_diesel::postgres::Pool>,
+    Json(payload): Json<GetExerciseDataPayload>,
+) -> ApiResponse<GetExerciseDataResponse> {
+    let ex: Result<Exercise, _> = run_query(
+        &pool, move |conn| {
+            exercises::table
+                .filter(exercises::id.eq(payload.exercise_id))
+                .inner_join(modules::table.on(exercises::module.eq(modules::id)))
+                .inner_join(games::table.on(modules::course.eq(games::id)))
+                .inner_join(playerregistrations::table.on(games::id.eq(playerregistrations::game)))
+                .filter(playerregistrations::player.eq(payload.player_id))
+                .filter(games::id.eq(payload.game_id))
+                .select(Exercise::as_select())
+                .distinct()
+                .first::<Exercise>(conn)
+        }
+    ).await;
+    match ex {
+        Err(err) => Json(ApiResponseCore::err(err)),
+        Ok(exercise) => {
+            let res = run_query(&pool, move |conn| {
+                playerunlocks::table
+                    .filter(playerunlocks::player.eq(payload.player_id))
+                    .filter(playerunlocks::exercise.eq(payload.exercise_id))
+                    .first::<PlayerUnlock>(conn)
+                    .optional()
+            }).await;
+            match res {
+                Err(err) => Json(ApiResponseCore::err(err)),
+                Ok(optional_pu) => {
+                    let game_res = run_query(&pool, move |conn| {
+                        games::table
+                            .filter(games::id.eq(payload.game_id))
+                            .first::<Game>(conn)
+                    }).await;
+                    if let Err(err) = game_res {
+                        return Json(ApiResponseCore::err(err));
+                    }
+                    let final_game = game_res.unwrap();
+                    let module_lock = module_lock_check(&pool, exercise.module, payload.player_id, final_game.modulelock).await;
+                    if module_lock.status_code != 200 {
+                        return Json(ApiResponseCore::err((StatusCode::INTERNAL_SERVER_ERROR, "could not query module_lock".to_string())));
+                    }
+                    let mut final_ex = exercise;
+                    final_ex.hidden = optional_pu.is_none() && final_ex.hidden;
+                    final_ex.locked = (final_ex.locked || final_game.exerciselock || module_lock.data
+                        .expect("api contract")) && optional_pu.is_none();
+                    Json(ApiResponseCore::ok(GetExerciseDataResponse::new(final_ex)))
+                }
+            }
+        }
+    }
+}
+
+async fn module_lock_check(pool: &Pool, module_id: i32, player_id: i32, module_lock: f32) -> ApiResponse<bool> {
+    let module_ex_count = run_query(&pool, move |conn| {
+        exercises::table
+            .filter(exercises::module.eq(module_id))
+            .count()
+            .get_result::<i64>(conn)
+    }).await;
+    if let Err(err) = module_ex_count {
+        return Json(ApiResponseCore::err(err));
+    }
+    let module_finished_ex_count = run_query(pool, move |conn| {
+        exercises::table
+            .inner_join(submissions::table.on(submissions::exercise.eq(exercises::id)))
+            .filter(exercises::module.eq(module_id))
+            .filter(submissions::player.eq(player_id))
+            .filter(submissions::feedback.eq("OK"))
+            .select(exercises::id)
+            .distinct()
+            .count()
+            .get_result::<i64>(conn)
+    }).await;
+    match module_finished_ex_count {
+        Ok(finished_count) => Json(ApiResponseCore::ok(finished_count / module_ex_count.unwrap() >= module_lock as i64)),
+        Err(err) => Json(ApiResponseCore::err(err))
+    }
+}
+
+pub async fn submit_solution(
+    State(pool): State<deadpool_diesel::postgres::Pool>,
+    Json(payload): Json<SubmitSolutionPayload>,
+) -> ApiResponse<SubmitSolutionResponse> {
+    let sub: Result<Option<Submission>, _> = run_query(
+        &pool, move |conn| {
+            submissions::table
+                .filter(submissions::player.eq(payload.player_id))
+                .filter(submissions::exercise.eq(payload.exercise_id))
+                .first::<Submission>(conn)
+                .optional()
+        }
+    ).await;
+    let first = match sub {
+        Err(err) => return Json(ApiResponseCore::err(err)),
+        Ok(opt_sub) => opt_sub.is_none()
+    };
+    let earned_rewards = payload.submission_earned_rewards.clone();
+    let new_submission = NewSubmission::new(
+        payload.exercise_id,
+        payload.player_id,
+        payload.submission_client,
+        payload.submission_submitted_code,
+        payload.submission_metrics,
+        payload.submission_result,
+        payload.submission_result_description,
+        payload.submission_feedback,
+        payload.submission_earned_rewards,
+        payload.submission_entered_at,
+        Utc::now().date_naive()
+    );
+    let submission_res = run_query(&pool, move |conn| {
+        diesel::insert_into(submissions::table)
+            .values(new_submission)
+            .execute(conn)
+    }).await;
+    if let Err(err) = submission_res {
+        return Json(ApiResponseCore::err(err));
+    }
+
+    let resp = if first {
+        let pr = run_query(&pool, move |conn| {
+            playerregistrations::table
+                .filter(playerregistrations::player.eq(payload.player_id))
+                .first::<PlayerRegistration>(conn)
+        }).await;
+        if let Err(err) = pr {
+            return Json(ApiResponseCore::err(err));
+        }
+        let pr = pr.unwrap();
+        let res = run_query(&pool, move |conn| {
+            diesel::update(playerregistrations::table.find(pr.id))
+                .set(playerregistrations::progress.eq(pr.progress + 1))
+                .execute(conn)
+        }).await;
+        if let Err(err) = res {
+            return Json(ApiResponseCore::err(err));
+        }
+        for reward_str in earned_rewards.split(",").map(|v| v.to_string()) {
+            let reward: Result<Reward, _> = run_query(
+                &pool, move |conn| {
+                    rewards::table
+                        .filter(rewards::name.eq(reward_str))
+                        .first::<Reward>(conn)
+                }).await;
+            if let Err(err) = reward {
+                return Json(ApiResponseCore::err(err));
+            }
+            let reward = reward.unwrap();
+            let d = Utc::now().date_naive();
+            let player_reward = NewPlayerReward::new(
+                pr.player, reward.id, Some(pr.game), 1, 0,
+                d, d + reward.validperiod
+            );
+            let player_reward_res = run_query(&pool, move |conn| {
+                diesel::insert_into(playerrewards::table)
+                    .values(player_reward)
+                    .execute(conn)
+            }).await;
+            if let Err(err) = player_reward_res {
+                return Json(ApiResponseCore::err(err));
+            }
+        }
+
+        let g: Result<Game, _> = run_query(
+            &pool, move |conn| {
+                games::table
+                    .filter(games::id.eq(pr.game))
+                    .first::<Game>(conn)
+            }).await;
+        if let Err(err) = g {
+            return Json(ApiResponseCore::err(err));
+        }
+        let final_game = g.unwrap();
+
+        let ex: Result<Exercise, _> = run_query(
+            &pool, move |conn| {
+                exercises::table
+                    .filter(exercises::id.eq(payload.exercise_id)).first::<Exercise>(conn)
+            }
+        ).await;
+        if let Err(err) = ex {
+            return Json(ApiResponseCore::err(err));
+        }
+
+        let module_lock = module_lock_check(&pool, ex.unwrap().module, payload.player_id, final_game.modulelock).await;
+        if final_game.exerciselock || module_lock.data.expect("api contract") {
+            let unlock_res = unlock_internal(
+                &pool, payload.player_id, payload.exercise_id
+            ).await;
+            if unlock_res.status_code != 200 {
+                return Json(ApiResponseCore::err(
+                    (StatusCode::INTERNAL_SERVER_ERROR, "could not unlock exercise".to_string())
+                ));
+            }
+        }
+        true
+    } else {
+        false
+    };
+    Json(ApiResponseCore::ok(SubmitSolutionResponse::new(resp)))
+}
+
+pub async fn unlock(
+    State(pool): State<deadpool_diesel::postgres::Pool>,
+    Json(payload): Json<UnlockPayload>,
+) -> ApiResponse<()> {
+    unlock_internal(&pool, payload.player_id, payload.exercise_id).await
+}
+
+async fn unlock_internal(pool: &Pool, player_id: i32, exercise_id: i32) -> ApiResponse<()> {
+    let pu = PlayerUnlock::new(
+        player_id, exercise_id, Utc::now().date_naive()
+    );
+    let res = run_query(&pool, move |conn| {
+        diesel::insert_into(playerunlocks::table)
+            .values(pu)
+            .execute(conn)
+    }).await;
+    match res {
+        Err(err) => Json(ApiResponseCore::err(err)),
+        Ok(_) => Json(ApiResponseCore::ok(()))
+    }
+}
+
+pub async fn get_last_solution(
+    State(pool): State<deadpool_diesel::postgres::Pool>,
+    Json(payload): Json<GetLastSolutionPayload>,
+) -> ApiResponse<GetLastSolutionResponse> {
+    let ok_submission: Result<Option<Submission>, _> = run_query(
+        &pool, move |conn| {
+            submissions::table
+                .filter(submissions::player.eq(payload.player_id))
+                .filter(submissions::exercise.eq(payload.exercise_id))
+                .filter(submissions::feedback.eq("OK"))
+                .first::<Submission>(conn)
+                .optional()
+        },
+    ).await;
+    match ok_submission {
+        Ok(Some(sub)) => Json(ApiResponseCore::ok(GetLastSolutionResponse::new(Some(sub)))),
+        Ok(None) => {
+            let recent_submission: Result<Option<Submission>, _> = run_query(
+                &pool, move |conn| {
+                    submissions::table
+                        .filter(submissions::player.eq(payload.player_id))
+                        .filter(submissions::exercise.eq(payload.exercise_id))
+                        .order_by(submissions::submittedat.desc())
+                        .first::<Submission>(conn)
+                        .optional()
+                },
+            ).await;
+            match recent_submission {
+                Ok(sub) => Json(ApiResponseCore::ok(GetLastSolutionResponse::new(sub))),
+                Err(err) => Json(ApiResponseCore::err(err)),
+            }
+        }
         Err(err) => Json(ApiResponseCore::err(err)),
     }
 }

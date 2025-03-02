@@ -1,4 +1,4 @@
-use crate::model::{Exercise, Game, PlayerRegistration};
+use crate::model::{Exercise, Game, PlayerRegistration, Submission};
 use axum::http::StatusCode;
 use chrono::NaiveDate;
 
@@ -285,40 +285,16 @@ pub struct UnlockPayload {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetLastSolutionPayload {
     pub(super) exercise_id: i32,
-    pub(super) player_id: i32,
-    pub(super) submission_client: String,
-    pub(super) submission_submitted_code: String,
-    pub(super) submission_metrics: String,
-    pub(super) submission_result: f64,
-    pub(super) submission_result_description: String,
-    pub(super) submission_feedback: String,
-    pub(super) submission_entered_at: NaiveDate,
-    pub(super) submission_earned_rewards: String,
+    pub(super) player_id: i32
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetLastSolutionResponse {
-    pub(super) submission_submitted_code: String,
-    pub(super) submission_metrics: String,
-    pub(super) submission_result: f64,
-    pub(super) submission_result_description: String,
-    pub(super) submission_feedback: String,
+    pub(super) submission: Option<Submission>
 }
 
 impl GetLastSolutionResponse {
-    pub fn new(
-        submission_submitted_code: String,
-        submission_metrics: String,
-        submission_result: f64,
-        submission_result_description: String,
-        submission_feedback: String,
-    ) -> Self {
-        Self {
-            submission_submitted_code,
-            submission_metrics,
-            submission_result,
-            submission_result_description,
-            submission_feedback,
-        }
+    pub fn new(submission: Option<Submission>) -> Self {
+        Self { submission }
     }
 }

@@ -5,8 +5,6 @@
 -- Dumped from database version 17.2
 -- Dumped by pg_dump version 17.2
 
--- Started on 2024-12-20 14:38:42
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -24,7 +22,6 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- TOC entry 218 (class 1259 OID 16823)
 -- Name: courses; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -45,7 +42,6 @@ CREATE TABLE public.courses (
 ALTER TABLE public.courses OWNER TO postgres;
 
 --
--- TOC entry 217 (class 1259 OID 16822)
 -- Name: course_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -61,8 +57,6 @@ CREATE SEQUENCE public.course_id_seq
 ALTER SEQUENCE public.course_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5007 (class 0 OID 0)
--- Dependencies: 217
 -- Name: course_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -70,7 +64,6 @@ ALTER SEQUENCE public.course_id_seq OWNED BY public.courses.id;
 
 
 --
--- TOC entry 224 (class 1259 OID 16860)
 -- Name: exercises; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -101,7 +94,6 @@ CREATE TABLE public.exercises (
 ALTER TABLE public.exercises OWNER TO postgres;
 
 --
--- TOC entry 223 (class 1259 OID 16859)
 -- Name: exercises_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -117,8 +109,6 @@ CREATE SEQUENCE public.exercises_id_seq
 ALTER SEQUENCE public.exercises_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5008 (class 0 OID 0)
--- Dependencies: 223
 -- Name: exercises_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -126,7 +116,6 @@ ALTER SEQUENCE public.exercises_id_seq OWNED BY public.exercises.id;
 
 
 --
--- TOC entry 222 (class 1259 OID 16846)
 -- Name: games; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -151,7 +140,6 @@ CREATE TABLE public.games (
 ALTER TABLE public.games OWNER TO postgres;
 
 --
--- TOC entry 221 (class 1259 OID 16845)
 -- Name: games_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -167,8 +155,6 @@ CREATE SEQUENCE public.games_id_seq
 ALTER SEQUENCE public.games_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5009 (class 0 OID 0)
--- Dependencies: 221
 -- Name: games_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -176,7 +162,6 @@ ALTER SEQUENCE public.games_id_seq OWNED BY public.games.id;
 
 
 --
--- TOC entry 230 (class 1259 OID 16916)
 -- Name: groups; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -190,7 +175,6 @@ CREATE TABLE public.groups (
 ALTER TABLE public.groups OWNER TO postgres;
 
 --
--- TOC entry 229 (class 1259 OID 16915)
 -- Name: groups_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -206,8 +190,6 @@ CREATE SEQUENCE public.groups_id_seq
 ALTER SEQUENCE public.groups_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5010 (class 0 OID 0)
--- Dependencies: 229
 -- Name: groups_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -215,7 +197,6 @@ ALTER SEQUENCE public.groups_id_seq OWNED BY public.groups.id;
 
 
 --
--- TOC entry 220 (class 1259 OID 16832)
 -- Name: modules; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -234,7 +215,6 @@ CREATE TABLE public.modules (
 ALTER TABLE public.modules OWNER TO postgres;
 
 --
--- TOC entry 219 (class 1259 OID 16831)
 -- Name: modules_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -250,8 +230,6 @@ CREATE SEQUENCE public.modules_id_seq
 ALTER SEQUENCE public.modules_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5011 (class 0 OID 0)
--- Dependencies: 219
 -- Name: modules_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -259,7 +237,6 @@ ALTER SEQUENCE public.modules_id_seq OWNED BY public.modules.id;
 
 
 --
--- TOC entry 231 (class 1259 OID 16924)
 -- Name: playergroups; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -274,7 +251,6 @@ CREATE TABLE public.playergroups (
 ALTER TABLE public.playergroups OWNER TO postgres;
 
 --
--- TOC entry 233 (class 1259 OID 16938)
 -- Name: playerregistrations; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -294,7 +270,6 @@ CREATE TABLE public.playerregistrations (
 ALTER TABLE public.playerregistrations OWNER TO postgres;
 
 --
--- TOC entry 232 (class 1259 OID 16937)
 -- Name: playerregistrations_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -310,8 +285,6 @@ CREATE SEQUENCE public.playerregistrations_id_seq
 ALTER SEQUENCE public.playerregistrations_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5012 (class 0 OID 0)
--- Dependencies: 232
 -- Name: playerregistrations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -319,7 +292,6 @@ ALTER SEQUENCE public.playerregistrations_id_seq OWNED BY public.playerregistrat
 
 
 --
--- TOC entry 237 (class 1259 OID 16983)
 -- Name: playerrewards; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -337,7 +309,6 @@ CREATE TABLE public.playerrewards (
 ALTER TABLE public.playerrewards OWNER TO postgres;
 
 --
--- TOC entry 226 (class 1259 OID 16888)
 -- Name: players; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -355,7 +326,6 @@ CREATE TABLE public.players (
 ALTER TABLE public.players OWNER TO postgres;
 
 --
--- TOC entry 225 (class 1259 OID 16887)
 -- Name: players_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -371,8 +341,6 @@ CREATE SEQUENCE public.players_id_seq
 ALTER SEQUENCE public.players_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5013 (class 0 OID 0)
--- Dependencies: 225
 -- Name: players_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -380,7 +348,6 @@ ALTER SEQUENCE public.players_id_seq OWNED BY public.players.id;
 
 
 --
--- TOC entry 234 (class 1259 OID 16956)
 -- Name: playerunlocks; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -394,7 +361,6 @@ CREATE TABLE public.playerunlocks (
 ALTER TABLE public.playerunlocks OWNER TO postgres;
 
 --
--- TOC entry 236 (class 1259 OID 16970)
 -- Name: rewards; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -404,14 +370,14 @@ CREATE TABLE public.rewards (
     name character varying NOT NULL,
     description text NOT NULL,
     messagewhenwon text NOT NULL,
-    imageurl text NOT NULL
+    imageurl text NOT NULL,
+    validperiod interval DEFAULT '1 mon'::interval NOT NULL
 );
 
 
 ALTER TABLE public.rewards OWNER TO postgres;
 
 --
--- TOC entry 235 (class 1259 OID 16969)
 -- Name: rewards_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -427,8 +393,6 @@ CREATE SEQUENCE public.rewards_id_seq
 ALTER SEQUENCE public.rewards_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5014 (class 0 OID 0)
--- Dependencies: 235
 -- Name: rewards_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -436,7 +400,6 @@ ALTER SEQUENCE public.rewards_id_seq OWNED BY public.rewards.id;
 
 
 --
--- TOC entry 228 (class 1259 OID 16897)
 -- Name: submissions; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -447,7 +410,7 @@ CREATE TABLE public.submissions (
     client character varying NOT NULL,
     submittedcode text NOT NULL,
     metrics text NOT NULL,
-    result real NOT NULL,
+    result double precision DEFAULT 100 NOT NULL,
     resultdescription text NOT NULL,
     feedback text NOT NULL,
     earnedrewards text NOT NULL,
@@ -459,7 +422,6 @@ CREATE TABLE public.submissions (
 ALTER TABLE public.submissions OWNER TO postgres;
 
 --
--- TOC entry 227 (class 1259 OID 16896)
 -- Name: submissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -475,8 +437,6 @@ CREATE SEQUENCE public.submissions_id_seq
 ALTER SEQUENCE public.submissions_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5015 (class 0 OID 0)
--- Dependencies: 227
 -- Name: submissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -484,7 +444,6 @@ ALTER SEQUENCE public.submissions_id_seq OWNED BY public.submissions.id;
 
 
 --
--- TOC entry 4794 (class 2604 OID 16826)
 -- Name: courses id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -492,7 +451,6 @@ ALTER TABLE ONLY public.courses ALTER COLUMN id SET DEFAULT nextval('public.cour
 
 
 --
--- TOC entry 4797 (class 2604 OID 16863)
 -- Name: exercises id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -500,7 +458,6 @@ ALTER TABLE ONLY public.exercises ALTER COLUMN id SET DEFAULT nextval('public.ex
 
 
 --
--- TOC entry 4796 (class 2604 OID 16849)
 -- Name: games id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -508,7 +465,6 @@ ALTER TABLE ONLY public.games ALTER COLUMN id SET DEFAULT nextval('public.games_
 
 
 --
--- TOC entry 4800 (class 2604 OID 16919)
 -- Name: groups id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -516,7 +472,6 @@ ALTER TABLE ONLY public.groups ALTER COLUMN id SET DEFAULT nextval('public.group
 
 
 --
--- TOC entry 4795 (class 2604 OID 16835)
 -- Name: modules id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -524,7 +479,6 @@ ALTER TABLE ONLY public.modules ALTER COLUMN id SET DEFAULT nextval('public.modu
 
 
 --
--- TOC entry 4801 (class 2604 OID 16941)
 -- Name: playerregistrations id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -532,7 +486,6 @@ ALTER TABLE ONLY public.playerregistrations ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
--- TOC entry 4798 (class 2604 OID 16891)
 -- Name: players id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -540,7 +493,6 @@ ALTER TABLE ONLY public.players ALTER COLUMN id SET DEFAULT nextval('public.play
 
 
 --
--- TOC entry 4802 (class 2604 OID 16973)
 -- Name: rewards id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -548,7 +500,6 @@ ALTER TABLE ONLY public.rewards ALTER COLUMN id SET DEFAULT nextval('public.rewa
 
 
 --
--- TOC entry 4799 (class 2604 OID 16900)
 -- Name: submissions id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -556,21 +507,17 @@ ALTER TABLE ONLY public.submissions ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
--- TOC entry 4982 (class 0 OID 16823)
--- Dependencies: 218
 -- Data for Name: courses; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.courses (id, title, description, languages, programminglanguages, gamificationruleconditions, gamificationcomplexrules, gamificationruleresults, createdat, updatedat) FROM stdin;
-1	Course 1	Description of Course 1	English, Spanish	Python, Java	Condition A	Complex Rule A	Result A	2024-12-06	2024-12-06
-2	Course 2	Description of Course 2	French, German	C++, Ruby	Condition B	Complex Rule B	Result B	2024-12-06	2024-12-06
-3	Course 3	Description of Course 3	Chinese, Japanese	Go, Kotlin	Condition C	Complex Rule C	Result C	2024-12-06	2024-12-06
+3	Course 3	Description of Course 3	Chinese, Japanese	Go, Kotlin	name: player 1 did 1 with 1 in 1 of 1 on 2000.01.01..2100.01.01 at 00:00..23:59 achieving 100		message	2024-12-06	2024-12-06
+2	Course 2	Description of Course 2	French, German	C++, Ruby	name: player 1 did 1 with 1 in 1 of 1 on 2000.01.01..2100.01.01 at 00:00..23:59 achieving 100		coupon	2024-12-06	2024-12-06
+1	Course 1	Description of Course 1	English, Spanish	Python, Java	name: player 1 did 1 with 1 in 1 of 1 on 2000.01.01..2100.01.01 at 00:00..23:59 achieving 100		badge	2024-12-06	2024-12-06
 \.
 
 
 --
--- TOC entry 4988 (class 0 OID 16860)
--- Dependencies: 224
 -- Data for Name: exercises; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -582,8 +529,6 @@ COPY public.exercises (id, version, module, "order", title, description, languag
 
 
 --
--- TOC entry 4986 (class 0 OID 16846)
--- Dependencies: 222
 -- Data for Name: games; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -595,8 +540,6 @@ COPY public.games (id, title, public, active, description, course, programmingla
 
 
 --
--- TOC entry 4994 (class 0 OID 16916)
--- Dependencies: 230
 -- Data for Name: groups; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -608,8 +551,6 @@ COPY public.groups (id, displayname, displayavatar) FROM stdin;
 
 
 --
--- TOC entry 4984 (class 0 OID 16832)
--- Dependencies: 220
 -- Data for Name: modules; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -621,8 +562,6 @@ COPY public.modules (id, course, "order", title, description, language, startdat
 
 
 --
--- TOC entry 4995 (class 0 OID 16924)
--- Dependencies: 231
 -- Data for Name: playergroups; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -634,23 +573,19 @@ COPY public.playergroups (player, "group", joinedat, leftat) FROM stdin;
 
 
 --
--- TOC entry 4997 (class 0 OID 16938)
--- Dependencies: 233
 -- Data for Name: playerregistrations; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.playerregistrations (id, player, game, language, progress, gamestate, savedat, joinedat, leftat) FROM stdin;
 2	2	2	Spanish	75	InProgress	2024-12-06	2024-12-06	\N
 3	3	3	French	100	Completed	2024-12-06	2024-12-06	\N
-4	1	1	english	0		2024-12-08	2024-12-08	\N
-5	1	1	english	0		2024-12-08	2024-12-08	\N
-1	1	1	Spanish	50	InProgress	2024-12-06	2024-12-06	\N
+5	1	1	english	1		2024-12-08	2024-12-08	\N
+1	1	1	Spanish	51		2024-12-06	2024-12-06	\N
+4	1	1	english	2		2024-12-08	2024-12-08	\N
 \.
 
 
 --
--- TOC entry 5001 (class 0 OID 16983)
--- Dependencies: 237
 -- Data for Name: playerrewards; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -658,12 +593,12 @@ COPY public.playerrewards (player, reward, game, count, usedcount, obtainedat, e
 1	1	1	1	0	2024-12-06	2024-12-31
 2	2	2	1	0	2024-12-06	2024-12-31
 3	3	\N	2	1	2024-12-06	2024-12-31
+1	1	1	1	0	2025-03-02	2025-04-01
+1	2	1	1	0	2025-03-02	2025-04-01
 \.
 
 
 --
--- TOC entry 4990 (class 0 OID 16888)
--- Dependencies: 226
 -- Data for Name: players; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -675,47 +610,37 @@ COPY public.players (id, email, displayname, displayavatar, points, createdat, l
 
 
 --
--- TOC entry 4998 (class 0 OID 16956)
--- Dependencies: 234
 -- Data for Name: playerunlocks; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.playerunlocks (player, exercise, unlockedat) FROM stdin;
-1	1	2024-12-06
-2	2	2024-12-06
-3	3	2024-12-06
+1	1	2025-03-02
+1	1	2025-03-02
 \.
 
 
 --
--- TOC entry 5000 (class 0 OID 16970)
--- Dependencies: 236
 -- Data for Name: rewards; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.rewards (id, course, name, description, messagewhenwon, imageurl) FROM stdin;
-1	1	Reward 1	Description of Reward 1	You won Reward 1!	reward1.png
-2	2	Reward 2	Description of Reward 2	You won Reward 2!	reward2.png
-3	3	Reward 3	Description of Reward 3	You won Reward 3!	reward3.png
+COPY public.rewards (id, course, name, description, messagewhenwon, imageurl, validperiod) FROM stdin;
+3	3	Reward 3	Description of Reward 3	You won Reward 3!	reward3.png	1 mon
+1	1	badge1	Description of Reward 1	You won Reward 1!	reward1.png	1 mon
+2	2	badge2	Description of Reward 2	You won Reward 2!	reward2.png	1 mon
 \.
 
 
 --
--- TOC entry 4992 (class 0 OID 16897)
--- Dependencies: 228
 -- Data for Name: submissions; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.submissions (id, exercise, player, client, submittedcode, metrics, result, resultdescription, feedback, earnedrewards, enteredat, submittedat) FROM stdin;
-1	1	1	Web Client 1	print("Hello, world!")	{"time": "1s", "memory": "5MB"}	100	Success	Good job!	{"reward1": 1}	2024-12-06	2024-12-06
-2	2	2	Mobile Client 1	System.out.println("Hola!");	{"time": "2s", "memory": "10MB"}	80	Partial Success	Consider optimizing your code.	{"reward2": 1}	2024-12-06	2024-12-06
-3	3	3	Desktop Client 1	cout << "Bonjour!";	{"time": "0.5s", "memory": "3MB"}	90	Success	Well done!	{"reward3": 1}	2024-12-06	2024-12-06
+3	3	3	Desktop Client 1	cout << "Bonjour!";	{"time": "0.5s", "memory": "3MB"}	90	Success	Well done!	badge1,badge2	2024-12-06	2024-12-06
+2	1	2	Mobile Client 1	System.out.println("Hola!");	{"time": "2s", "memory": "10MB"}	80	Partial Success	Consider optimizing your code.	badge1,badge2	2024-12-06	2024-12-06
 \.
 
 
 --
--- TOC entry 5016 (class 0 OID 0)
--- Dependencies: 217
 -- Name: course_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
@@ -723,8 +648,6 @@ SELECT pg_catalog.setval('public.course_id_seq', 3, true);
 
 
 --
--- TOC entry 5017 (class 0 OID 0)
--- Dependencies: 223
 -- Name: exercises_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
@@ -732,8 +655,6 @@ SELECT pg_catalog.setval('public.exercises_id_seq', 3, true);
 
 
 --
--- TOC entry 5018 (class 0 OID 0)
--- Dependencies: 221
 -- Name: games_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
@@ -741,8 +662,6 @@ SELECT pg_catalog.setval('public.games_id_seq', 3, true);
 
 
 --
--- TOC entry 5019 (class 0 OID 0)
--- Dependencies: 229
 -- Name: groups_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
@@ -750,8 +669,6 @@ SELECT pg_catalog.setval('public.groups_id_seq', 3, true);
 
 
 --
--- TOC entry 5020 (class 0 OID 0)
--- Dependencies: 219
 -- Name: modules_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
@@ -759,8 +676,6 @@ SELECT pg_catalog.setval('public.modules_id_seq', 3, true);
 
 
 --
--- TOC entry 5021 (class 0 OID 0)
--- Dependencies: 232
 -- Name: playerregistrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
@@ -768,8 +683,6 @@ SELECT pg_catalog.setval('public.playerregistrations_id_seq', 6, true);
 
 
 --
--- TOC entry 5022 (class 0 OID 0)
--- Dependencies: 225
 -- Name: players_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
@@ -777,8 +690,6 @@ SELECT pg_catalog.setval('public.players_id_seq', 3, true);
 
 
 --
--- TOC entry 5023 (class 0 OID 0)
--- Dependencies: 235
 -- Name: rewards_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
@@ -786,16 +697,13 @@ SELECT pg_catalog.setval('public.rewards_id_seq', 3, true);
 
 
 --
--- TOC entry 5024 (class 0 OID 0)
--- Dependencies: 227
 -- Name: submissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.submissions_id_seq', 3, true);
+SELECT pg_catalog.setval('public.submissions_id_seq', 10, true);
 
 
 --
--- TOC entry 4804 (class 2606 OID 16830)
 -- Name: courses course_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -804,7 +712,6 @@ ALTER TABLE ONLY public.courses
 
 
 --
--- TOC entry 4810 (class 2606 OID 16867)
 -- Name: exercises exercises_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -813,7 +720,6 @@ ALTER TABLE ONLY public.exercises
 
 
 --
--- TOC entry 4808 (class 2606 OID 16853)
 -- Name: games games_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -822,7 +728,6 @@ ALTER TABLE ONLY public.games
 
 
 --
--- TOC entry 4816 (class 2606 OID 16923)
 -- Name: groups groups_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -831,7 +736,6 @@ ALTER TABLE ONLY public.groups
 
 
 --
--- TOC entry 4806 (class 2606 OID 16839)
 -- Name: modules modules_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -840,7 +744,6 @@ ALTER TABLE ONLY public.modules
 
 
 --
--- TOC entry 4818 (class 2606 OID 16945)
 -- Name: playerregistrations playerregistrations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -849,7 +752,6 @@ ALTER TABLE ONLY public.playerregistrations
 
 
 --
--- TOC entry 4812 (class 2606 OID 16895)
 -- Name: players players_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -858,7 +760,6 @@ ALTER TABLE ONLY public.players
 
 
 --
--- TOC entry 4820 (class 2606 OID 16977)
 -- Name: rewards rewards_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -867,7 +768,6 @@ ALTER TABLE ONLY public.rewards
 
 
 --
--- TOC entry 4814 (class 2606 OID 16904)
 -- Name: submissions submissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -876,7 +776,6 @@ ALTER TABLE ONLY public.submissions
 
 
 --
--- TOC entry 4823 (class 2606 OID 16868)
 -- Name: exercises exercises_module_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -885,7 +784,6 @@ ALTER TABLE ONLY public.exercises
 
 
 --
--- TOC entry 4822 (class 2606 OID 16854)
 -- Name: games games_course_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -894,7 +792,6 @@ ALTER TABLE ONLY public.games
 
 
 --
--- TOC entry 4821 (class 2606 OID 16840)
 -- Name: modules modules_course_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -903,7 +800,6 @@ ALTER TABLE ONLY public.modules
 
 
 --
--- TOC entry 4826 (class 2606 OID 16932)
 -- Name: playergroups playergroups_group_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -912,7 +808,6 @@ ALTER TABLE ONLY public.playergroups
 
 
 --
--- TOC entry 4827 (class 2606 OID 16927)
 -- Name: playergroups playergroups_player_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -921,7 +816,6 @@ ALTER TABLE ONLY public.playergroups
 
 
 --
--- TOC entry 4828 (class 2606 OID 16951)
 -- Name: playerregistrations playerregistrations_game_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -930,7 +824,6 @@ ALTER TABLE ONLY public.playerregistrations
 
 
 --
--- TOC entry 4829 (class 2606 OID 16946)
 -- Name: playerregistrations playerregistrations_player_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -939,7 +832,6 @@ ALTER TABLE ONLY public.playerregistrations
 
 
 --
--- TOC entry 4833 (class 2606 OID 16996)
 -- Name: playerrewards playerrewards_game_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -948,7 +840,6 @@ ALTER TABLE ONLY public.playerrewards
 
 
 --
--- TOC entry 4834 (class 2606 OID 16986)
 -- Name: playerrewards playerrewards_player_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -957,7 +848,6 @@ ALTER TABLE ONLY public.playerrewards
 
 
 --
--- TOC entry 4835 (class 2606 OID 16991)
 -- Name: playerrewards playerrewards_reward_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -966,7 +856,6 @@ ALTER TABLE ONLY public.playerrewards
 
 
 --
--- TOC entry 4830 (class 2606 OID 16964)
 -- Name: playerunlocks playerunlocks_exercise_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -975,7 +864,6 @@ ALTER TABLE ONLY public.playerunlocks
 
 
 --
--- TOC entry 4831 (class 2606 OID 16959)
 -- Name: playerunlocks playerunlocks_player_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -984,7 +872,6 @@ ALTER TABLE ONLY public.playerunlocks
 
 
 --
--- TOC entry 4832 (class 2606 OID 16978)
 -- Name: rewards rewards_course_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -993,7 +880,6 @@ ALTER TABLE ONLY public.rewards
 
 
 --
--- TOC entry 4824 (class 2606 OID 16905)
 -- Name: submissions submissions_exercise_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1002,15 +888,12 @@ ALTER TABLE ONLY public.submissions
 
 
 --
--- TOC entry 4825 (class 2606 OID 16910)
 -- Name: submissions submissions_player_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.submissions
     ADD CONSTRAINT submissions_player_fkey FOREIGN KEY (player) REFERENCES public.players(id);
 
-
--- Completed on 2024-12-20 14:38:42
 
 --
 -- PostgreSQL database dump complete

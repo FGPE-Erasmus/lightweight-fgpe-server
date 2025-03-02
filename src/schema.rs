@@ -148,6 +148,7 @@ table! {
         description -> Text,
         messagewhenwon -> Text,
         imageurl -> Text,
+        validperiod -> Interval
     }
 }
 

@@ -283,3 +283,127 @@ Options:
 }
 ```
 
+#### Get Exercise Data
+- URL: `/get_exercise_data`
+- Method: `POST`
+- Payload:
+```
+{
+    "exercise_id": 1,
+    "player_id": 1,
+    "game_id": 1
+}
+```
+- Response:
+```
+{
+    "status_text": "OK",
+    "status_code": 200,
+    "data": {
+        "exercise": {
+            "id": 1,
+            "version": 1,
+            "module": 1,
+            "order": 1,
+            "title": "Exercise 1",
+            "description": "Description of Exercise 1",
+            "language": "English",
+            "programminglanguage": "Python",
+            "initcode": "print(\"Hello\")",
+            "precode": "",
+            "postcode": "",
+            "testcode": "",
+            "checksource": "",
+            "hidden": false,
+            "locked": false,
+            "mode": "Standard",
+            "modeparameters": "{}",
+            "difficulty": "Easy",
+            "createdat": "2024-12-06",
+            "updatedat": "2024-12-06"
+        }
+    }
+}
+```
+
+#### Submit Solution
+- URL: `/submit_solution`
+- Method: `POST`
+- Payload:
+```
+{
+    "exercise_id": 1,
+    "player_id": 1,
+    "submission_client": "submission_client1",
+    "submission_submitted_code": "submission_submitted_code1",
+    "submission_metrics": "submission_metrics1",
+    "submission_result": 100.0,
+    "submission_result_description": "perfect",
+    "submission_feedback": "OK",
+    "submission_entered_at": "2024-12-06",
+    "submission_earned_rewards": "badge1,badge2"
+}
+```
+- Response:
+```
+{
+    "status_text": "OK",
+    "status_code": 200,
+    "data": {
+        "first_submission": false
+    }
+}
+```
+
+#### Unlock
+- URL: `/unlock`
+- Method: `POST`
+- Payload:
+```
+{
+    "exercise_id": 1,
+    "player_id": 1
+}
+```
+- Response:
+```
+{
+    "status_text": "OK",
+    "status_code": 200,
+    "data": null
+}
+```
+
+#### Get Last Solution
+- URL: `/get_last_solution`
+- Method: `POST`
+- Payload:
+```
+{
+    "exercise_id": 1,
+    "player_id": 1
+}
+```
+- Response:
+```
+{
+    "status_text": "OK",
+    "status_code": 200,
+    "data": {
+        "submission": {
+            "id": 9,
+            "exercise": 1,
+            "player": 1,
+            "client": "submission_client1",
+            "submittedcode": "submission_submitted_code1",
+            "metrics": "submission_metrics1",
+            "result": 100.0,
+            "resultdescription": "perfect",
+            "feedback": "OK",
+            "earnedrewards": "badge1,badge2",
+            "enteredat": "2024-12-06",
+            "submittedat": "2025-03-02"
+        }
+    }
+}
+```
