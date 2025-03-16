@@ -5,6 +5,11 @@ use clap::Parser;
 use deadpool_diesel::postgres::Pool;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use axum::extract::State;
+use axum::response::Redirect;
+use axum_keycloak_auth::instance::{KeycloakAuthInstance, KeycloakConfig};
+use axum_keycloak_auth::layer::KeycloakAuthLayer;
+use axum_keycloak_auth::{PassthroughMode, Url};
 
 mod api;
 mod cli;
@@ -38,6 +43,7 @@ fn init_pool(conn_str: &str) -> Pool {
 fn init_router(pool: Pool) -> Router {
     Router::new()
         .route("/get_available_games", get(api::get_available_games))
+//        .layer(init_protection_layer())
         .route("/join_game", post(api::join_game))
         .route("/save_game", post(api::save_game))
         .route("/load_game", post(api::load_game))
@@ -52,6 +58,20 @@ fn init_router(pool: Pool) -> Router {
         .route("/unlock", post(api::unlock))
         .route("/get_last_solution", post(api::get_last_solution))
         .with_state(pool)
+}
+
+fn init_protection_layer() -> KeycloakAuthLayer<String> {
+    KeycloakAuthLayer::<String>::builder()
+        .instance(KeycloakAuthInstance::new(
+            KeycloakConfig::builder()
+                .server(Url::parse("http://localhost:8080/").unwrap())
+                .realm(String::from("rustapp"))
+                .build(),
+        ))
+        .passthrough_mode(PassthroughMode::Block)
+        .persist_raw_claims(false)
+        .expected_audiences(vec![String::from("account")])
+        .build()
 }
 
 async fn run(router: Router, server_url: &str) {
