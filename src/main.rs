@@ -6,10 +6,12 @@ use deadpool_diesel::postgres::Pool;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use axum::extract::State;
+use axum::http::{header, Method};
 use axum::response::Redirect;
 use axum_keycloak_auth::instance::{KeycloakAuthInstance, KeycloakConfig};
 use axum_keycloak_auth::layer::KeycloakAuthLayer;
 use axum_keycloak_auth::{PassthroughMode, Url};
+use tower_http::cors::CorsLayer;
 
 mod api;
 mod cli;
@@ -41,6 +43,11 @@ fn init_pool(conn_str: &str) -> Pool {
 }
 
 fn init_router(pool: Pool) -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:3006".parse::<header::HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+        .allow_headers([header::CONTENT_TYPE]);
+
     Router::new()
         .route("/get_available_games", get(api::get_available_games))
 //        .layer(init_protection_layer())
@@ -58,6 +65,7 @@ fn init_router(pool: Pool) -> Router {
         .route("/unlock", post(api::unlock))
         .route("/get_last_solution", post(api::get_last_solution))
         .with_state(pool)
+        .layer(cors)
 }
 
 fn init_protection_layer() -> KeycloakAuthLayer<String> {

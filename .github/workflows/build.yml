@@ -1,0 +1,143 @@
+# .github/workflows/build.yml
+
+name: Build and Test
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  # --- IMPORTANT: CHANGE THIS TO THE ACTUAL NAME OF YOUR BINARY ---
+  BINARY_NAME: lightweight-fgpe-server
+
+jobs:
+  build_and_test:
+    strategy:
+      # Don't cancel other jobs if one fails
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            bin_suffix: ""
+            archive_suffix: "tar.gz" # Use tar.gz for Linux
+
+          # Windows x86_64 (using MSVC toolchain)
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin_suffix: ".exe"
+            archive_suffix: "zip" # Use zip for Windows
+
+          # macOS x86_64 (Intel)
+          - os: macos-latest # Usually Intel, check runner docs if specific generation needed
+            target: x86_64-apple-darwin
+            bin_suffix: ""
+            archive_suffix: "zip" # Use zip for macOS
+
+          # macOS aarch64 (Apple Silicon)
+          - os: macos-14 # Explicit ARM runner
+            target: aarch64-apple-darwin
+            bin_suffix: ""
+            archive_suffix: "zip" # Use zip for macOS
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal # Faster install
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      # --- Optional System Dependencies ---
+      # Add steps here if you need system libraries (e.g., apt-get install, brew install)
+      # Example for Linux (uncomment and modify if needed):
+      # - name: Install Linux dependencies
+      #   if: runner.os == 'Linux'
+      #   run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
+
+      # Example for macOS (LLVM - only if needed by a dependency)
+      - name: Install LLVM (macOS)
+        if: runner.os == 'macOS'
+        run: brew install llvm || true # Add || true if it's okay for this to fail (e.g., already installed)
+
+      # --- Build ---
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      # --- Test ---
+      # Run tests natively. No need for --target if building and testing on the same architecture.
+      - name: Run tests
+        run: cargo test --verbose
+
+      # --- Prepare Artifact Staging Area ---
+      - name: Create staging directory
+        run: mkdir staging
+
+      # Move the binary into the staging directory
+      # Use PowerShell syntax for move on Windows, bash for Linux/macOS
+      - name: Stage Binary (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: mv target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}${{ matrix.bin_suffix }} staging/
+
+      - name: Stage Binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh # Use PowerShell for Windows move command
+        run: Move-Item -Path target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}${{ matrix.bin_suffix }} -Destination staging/
+
+      # --- Create macOS Wrapper Script ---
+      # This script allows users to double-click to run the command-line app in Terminal
+      - name: Create macOS run.command script
+        if: runner.os == 'macOS'
+        run: |
+          echo "#!/bin/bash" > staging/run.command
+          # Get the directory containing the script
+          echo 'DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )' >> staging/run.command
+          # Make the actual binary executable (important!) and run it
+          # Pass any arguments given to the script along to the binary using "$@"
+          echo "chmod +x \"\$DIR/${{ env.BINARY_NAME }}\"" >> staging/run.command
+          echo "\"\"\$DIR/${{ env.BINARY_NAME }}\" \"\$@\"" >> staging/run.command
+          # Optional: Keep terminal open after execution to see output/errors
+          echo "echo" >> staging/run.command
+          echo "read -p 'Process finished. Press Enter to close window...'" >> staging/run.command
+          # Make the script itself executable
+          chmod +x staging/run.command
+
+      # --- Create Archive ---
+      # Create platform-specific archive (tar.gz for Linux, zip for Win/Mac)
+      - name: Create Archive (Linux)
+        if: runner.os == 'Linux'
+        # Using tar: c=create, z=gzip, f=file. -C changes directory first.
+        run: tar -czf ${{ env.BINARY_NAME }}-${{ matrix.target }}.tar.gz -C staging .
+
+      - name: Create Archive (macOS)
+        if: runner.os == 'macOS'
+        # Using zip: -r=recursive, -j=junk paths (store files at top level of zip)
+        run: zip -rj ${{ env.BINARY_NAME }}-${{ matrix.target }}.zip staging
+
+      - name: Create Archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh # Explicitly use PowerShell
+        # Use PowerShell's Compress-Archive.
+        # -Path staging\* selects all items *inside* the staging folder.
+        # -DestinationPath is the output zip file name.
+        # -Force overwrites the destination file if it already exists.
+        run: Compress-Archive -Path staging\* -DestinationPath ${{ env.BINARY_NAME }}-${{ matrix.target }}.zip -Force
+
+      # --- Upload Artifact ---
+      # Upload the final compressed archive
+      - name: Upload artifact archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-${{ matrix.target }} # Consistent artifact name prefix
+          # The path now correctly uses the archive_suffix defined in the matrix
+          path: ${{ env.BINARY_NAME }}-${{ matrix.target }}.${{ matrix.archive_suffix }}
+          if-no-files-found: error # Error if the archive wasn't created
