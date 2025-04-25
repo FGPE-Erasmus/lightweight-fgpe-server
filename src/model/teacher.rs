@@ -1,14 +1,14 @@
+use crate::schema::game_ownership;
+use crate::schema::games;
+use crate::schema::group_ownership;
+use crate::schema::groups;
+use crate::schema::player_groups;
+use crate::schema::players;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use diesel::{AsChangeset, Insertable, Queryable};
 use serde::Serialize;
 use serde_json::Value as JsonValue;
-use crate::schema::games;
-use crate::schema::game_ownership;
-use crate::schema::groups;
-use crate::schema::group_ownership;
-use crate::schema::player_groups;
-use crate::schema::players;
 
 #[derive(Insertable, Debug)]
 #[diesel(table_name = games)]

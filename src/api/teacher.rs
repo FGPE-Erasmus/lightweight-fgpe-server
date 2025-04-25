@@ -1,43 +1,47 @@
-use anyhow::anyhow;
 use super::helper;
+use anyhow::anyhow;
 
+use crate::model::student::NewPlayerRegistration;
+use crate::model::teacher::{
+    ExerciseStatsResponse, GameChangeset, InstructorGameMetadataResponse, NewGame,
+    NewGameOwnership, NewGroup, NewGroupOwnership, NewPlayer, NewPlayerGroup,
+    StudentExercisesResponse, StudentProgressResponse, SubmissionDataResponse,
+};
+use crate::payloads::teacher::{
+    ActivateGamePayload, AddGameInstructorPayload, AddGroupMemberPayload, CreateGamePayload,
+    CreateGroupPayload, CreatePlayerPayload, DeletePlayerPayload, DisablePlayerPayload,
+    DissolveGroupPayload, GetExerciseStatsParams, GetExerciseSubmissionsParams,
+    GetInstructorGameMetadataParams, GetStudentExercisesParams, GetStudentProgressParams,
+    GetStudentSubmissionsParams, GetSubmissionDataParams, ListStudentsParams, ModifyGamePayload,
+    RemoveGameInstructorPayload, RemoveGameStudentPayload, RemoveGroupMemberPayload,
+    StopGamePayload, TranslateEmailParams,
+};
 use crate::{
     errors::AppError,
     payloads::teacher::GetInstructorGamesParams,
     response::ApiResponse,
     schema::{
-        game_ownership::dsl as go_dsl,
-        instructors::dsl as instructors_dsl,
-        games::dsl as games_dsl,
-        player_registrations::dsl as pr_dsl,
-        players::dsl as players_dsl,
-        player_groups::dsl as pg_dsl,
-        submissions::dsl as sub_dsl,
-        exercises::dsl as exercises_dsl,
-        courses::dsl as courses_dsl,
-        modules::dsl as modules_dsl,
-        groups::dsl as groups_dsl,
-        group_ownership::dsl as gro_dsl,
-        player_rewards::dsl as prw_dsl,
-        player_unlocks::dsl as pu_dsl
+        courses::dsl as courses_dsl, exercises::dsl as exercises_dsl,
+        game_ownership::dsl as go_dsl, games::dsl as games_dsl, group_ownership::dsl as gro_dsl,
+        groups::dsl as groups_dsl, instructors::dsl as instructors_dsl,
+        modules::dsl as modules_dsl, player_groups::dsl as pg_dsl,
+        player_registrations::dsl as pr_dsl, player_rewards::dsl as prw_dsl,
+        player_unlocks::dsl as pu_dsl, players::dsl as players_dsl, submissions::dsl as sub_dsl,
     },
 };
 use axum::{
-    extract::{Query, State},
     Json,
+    extract::{Query, State},
 };
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Duration, Utc};
 use deadpool_diesel::postgres::Pool;
-use diesel::dsl::{count, exists};
+use diesel::dsl::exists;
 use diesel::prelude::*;
 use diesel::result::{DatabaseErrorKind, Error as DieselError};
 use serde_json::json;
-use tracing::{debug, error, info, instrument};
 use tracing::log::warn;
-use crate::model::student::NewPlayerRegistration;
-use crate::model::teacher::{ExerciseStatsResponse, GameChangeset, InstructorGameMetadataResponse, NewGame, NewGameOwnership, NewGroup, NewGroupOwnership, NewPlayer, NewPlayerGroup, StudentExercisesResponse, StudentProgressResponse, SubmissionDataResponse};
-use crate::payloads::teacher::{ActivateGamePayload, AddGameInstructorPayload, AddGroupMemberPayload, CreateGamePayload, CreateGroupPayload, CreatePlayerPayload, DeletePlayerPayload, DisablePlayerPayload, DissolveGroupPayload, GetExerciseStatsParams, GetExerciseSubmissionsParams, GetInstructorGameMetadataParams, GetStudentExercisesParams, GetStudentProgressParams, GetStudentSubmissionsParams, GetSubmissionDataParams, ListStudentsParams, ModifyGamePayload, RemoveGameInstructorPayload, RemoveGameStudentPayload, RemoveGroupMemberPayload, StopGamePayload, TranslateEmailParams};
+use tracing::{debug, error, info, instrument};
 
 /// Retrieves all game IDs associated with a specific instructor.
 ///
@@ -63,7 +67,8 @@ pub async fn get_instructor_games(
     let instructor_exists = helper::run_query(&pool, move |conn| {
         diesel::select(exists(instructors_dsl::instructors.find(instructor_id)))
             .get_result::<bool>(conn)
-    }).await?;
+    })
+    .await?;
 
     if !instructor_exists {
         error!("Instructor with ID {} not found.", instructor_id);
@@ -72,14 +77,18 @@ pub async fn get_instructor_games(
             instructor_id
         )));
     }
-    info!("Instructor {} found. Fetching associated games...", instructor_id);
+    info!(
+        "Instructor {} found. Fetching associated games...",
+        instructor_id
+    );
 
     let game_ids = helper::run_query(&pool, move |conn_sync| {
         go_dsl::game_ownership
             .filter(go_dsl::instructor_id.eq(instructor_id))
             .select(go_dsl::game_id)
             .load::<i64>(conn_sync)
-    }).await?;
+    })
+    .await?;
 
     info!(
         "Successfully fetched {} game IDs for instructor_id: {}",
@@ -121,41 +130,57 @@ pub async fn get_instructor_game_metadata(
     );
 
     type GameDetailsTuple = (
-        String, DateTime<Utc>, DateTime<Utc>, bool, bool, i32, String
+        String,
+        DateTime<Utc>,
+        DateTime<Utc>,
+        bool,
+        bool,
+        i32,
+        String,
     ); // title, start, end, active, public, total_ex, desc
 
     let (title, start_date, end_date, active, public, total_exercises, description) =
-        helper::run_query(&pool, { let game_id = game_id; move |conn| {
-            games_dsl::games
-                .find(game_id)
-                .select((
-                    games_dsl::title,
-                    games_dsl::start_date,
-                    games_dsl::end_date,
-                    games_dsl::active,
-                    games_dsl::public,
-                    games_dsl::total_exercises,
-                    games_dsl::description,
-                )).first::<GameDetailsTuple>(conn)
-        }}).await?;
+        helper::run_query(&pool, {
+            move |conn| {
+                games_dsl::games
+                    .find(game_id)
+                    .select((
+                        games_dsl::title,
+                        games_dsl::start_date,
+                        games_dsl::end_date,
+                        games_dsl::active,
+                        games_dsl::public,
+                        games_dsl::total_exercises,
+                        games_dsl::description,
+                    ))
+                    .first::<GameDetailsTuple>(conn)
+            }
+        })
+        .await?;
 
     let mut is_owner = false;
     if instructor_id != 0 {
-        is_owner = helper::run_query(&pool, { let instructor_id = instructor_id; let game_id = game_id; move |conn| {
-            go_dsl::game_ownership
-                .filter(go_dsl::instructor_id.eq(instructor_id))
-                .filter(go_dsl::game_id.eq(game_id))
-                .select(go_dsl::owner)
-                .first::<bool>(conn)
-        }}).await?;
+        is_owner = helper::run_query(&pool, {
+            move |conn| {
+                go_dsl::game_ownership
+                    .filter(go_dsl::instructor_id.eq(instructor_id))
+                    .filter(go_dsl::game_id.eq(game_id))
+                    .select(go_dsl::owner)
+                    .first::<bool>(conn)
+            }
+        })
+        .await?;
     }
 
-    let player_count = helper::run_query(&pool, { let game_id = game_id; move |conn| {
-        pr_dsl::player_registrations
-            .filter(pr_dsl::game_id.eq(game_id))
-            .count()
-            .get_result::<i64>(conn)
-    }}).await?;
+    let player_count = helper::run_query(&pool, {
+        move |conn| {
+            pr_dsl::player_registrations
+                .filter(pr_dsl::game_id.eq(game_id))
+                .count()
+                .get_result::<i64>(conn)
+        }
+    })
+    .await?;
 
     let response_data = InstructorGameMetadataResponse {
         title,
@@ -212,13 +237,18 @@ pub async fn list_students(
     );
 
     if let Some(gid) = group_id_filter {
-        let group_exists = helper::run_query(&pool, { let gid = gid; move |conn| {
-            diesel::select(exists(groups_dsl::groups.find(gid)))
-                .get_result::<bool>(conn)
-        }}).await?;
+        let group_exists = helper::run_query(&pool, {
+            move |conn| {
+                diesel::select(exists(groups_dsl::groups.find(gid))).get_result::<bool>(conn)
+            }
+        })
+        .await?;
         if !group_exists {
             error!("Filter group with ID {} not found.", gid);
-            return Err(AppError::NotFound(format!("Filter group with ID {} not found.", gid)));
+            return Err(AppError::NotFound(format!(
+                "Filter group with ID {} not found.",
+                gid
+            )));
         }
         info!("Filter group {} confirmed to exist.", gid);
     }
@@ -245,7 +275,6 @@ pub async fn list_students(
             }
 
             query.load::<i64>(conn_sync)
-
         } else {
             let mut query = pr_dsl::player_registrations
                 .filter(pr_dsl::game_id.eq(game_id))
@@ -261,7 +290,8 @@ pub async fn list_students(
 
             query.load::<i64>(conn_sync)
         }
-    }).await?;
+    })
+    .await?;
 
     info!(
         "Successfully fetched {} student IDs for game_id: {} with applied filters.",
@@ -304,19 +334,25 @@ pub async fn get_student_progress(
         instructor_id, game_id
     );
 
-    let registration_info = helper::run_query(&pool, { let player_id = player_id; let game_id = game_id; move |conn| {
-        pr_dsl::player_registrations
-            .filter(pr_dsl::player_id.eq(player_id))
-            .filter(pr_dsl::game_id.eq(game_id))
-            .inner_join(games_dsl::games.on(pr_dsl::game_id.eq(games_dsl::id)))
-            .select((pr_dsl::id, games_dsl::total_exercises))
-            .first::<(i64, i32)>(conn)
-            .optional()
-    }}).await?;
+    let registration_info = helper::run_query(&pool, {
+        move |conn| {
+            pr_dsl::player_registrations
+                .filter(pr_dsl::player_id.eq(player_id))
+                .filter(pr_dsl::game_id.eq(game_id))
+                .inner_join(games_dsl::games.on(pr_dsl::game_id.eq(games_dsl::id)))
+                .select((pr_dsl::id, games_dsl::total_exercises))
+                .first::<(i64, i32)>(conn)
+                .optional()
+        }
+    })
+    .await?;
 
     let game_total_exercises = match registration_info {
         Some((_reg_id, total_ex)) => {
-            info!("Player {} confirmed registered in game {}.", player_id, game_id);
+            info!(
+                "Player {} confirmed registered in game {}.",
+                player_id, game_id
+            );
             total_ex
         }
         None => {
@@ -332,7 +368,6 @@ pub async fn get_student_progress(
     };
 
     let total_attempts = helper::run_query(&pool, {
-        let player_id = player_id; let game_id = game_id;
         move |conn| {
             sub_dsl::submissions
                 .filter(sub_dsl::player_id.eq(player_id))
@@ -340,10 +375,10 @@ pub async fn get_student_progress(
                 .count()
                 .get_result::<i64>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     let solved_exercises_count = helper::run_query(&pool, {
-        let player_id = player_id; let game_id = game_id;
         move |conn| {
             sub_dsl::submissions
                 .filter(sub_dsl::player_id.eq(player_id))
@@ -354,7 +389,8 @@ pub async fn get_student_progress(
                 .count()
                 .get_result::<i64>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     let progress_percentage = if game_total_exercises > 0 {
         (solved_exercises_count as f64 / game_total_exercises as f64) * 100.0
@@ -413,16 +449,16 @@ pub async fn get_student_exercises(
     );
 
     let is_registered = helper::run_query(&pool, {
-        let player_id = player_id; let game_id = game_id;
         move |conn| {
             diesel::select(exists(
                 pr_dsl::player_registrations
                     .filter(pr_dsl::player_id.eq(player_id))
                     .filter(pr_dsl::game_id.eq(game_id)),
             ))
-                .get_result::<bool>(conn)
+            .get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     if !is_registered {
         warn!(
@@ -434,10 +470,12 @@ pub async fn get_student_exercises(
             player_id, game_id
         )));
     }
-    info!("Player {} confirmed registered in game {}.", player_id, game_id);
+    info!(
+        "Player {} confirmed registered in game {}.",
+        player_id, game_id
+    );
 
     let attempted_exercises_list = helper::run_query(&pool, {
-        let player_id = player_id; let game_id = game_id;
         move |conn| {
             sub_dsl::submissions
                 .filter(sub_dsl::player_id.eq(player_id))
@@ -446,10 +484,10 @@ pub async fn get_student_exercises(
                 .distinct()
                 .load::<i64>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     let solved_exercises_list = helper::run_query(&pool, {
-        let player_id = player_id; let game_id = game_id;
         move |conn| {
             sub_dsl::submissions
                 .filter(sub_dsl::player_id.eq(player_id))
@@ -459,7 +497,8 @@ pub async fn get_student_exercises(
                 .distinct()
                 .load::<i64>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     let response_data = StudentExercisesResponse {
         attempted_exercises: attempted_exercises_list,
@@ -468,7 +507,10 @@ pub async fn get_student_exercises(
 
     info!(
         "Successfully fetched exercise lists for player_id: {} in game_id: {}. Attempted: {}, Solved: {}",
-        player_id, game_id, response_data.attempted_exercises.len(), response_data.solved_exercises.len()
+        player_id,
+        game_id,
+        response_data.attempted_exercises.len(),
+        response_data.solved_exercises.len()
     );
     Ok(ApiResponse::ok(response_data))
 }
@@ -509,16 +551,16 @@ pub async fn get_student_submissions(
     );
 
     let is_registered = helper::run_query(&pool, {
-        let player_id = player_id; let game_id = game_id;
         move |conn| {
             diesel::select(exists(
                 pr_dsl::player_registrations
                     .filter(pr_dsl::player_id.eq(player_id))
                     .filter(pr_dsl::game_id.eq(game_id)),
             ))
-                .get_result::<bool>(conn)
+            .get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     if !is_registered {
         warn!(
@@ -530,7 +572,10 @@ pub async fn get_student_submissions(
             player_id, game_id
         )));
     }
-    info!("Player {} confirmed registered in game {}.", player_id, game_id);
+    info!(
+        "Player {} confirmed registered in game {}.",
+        player_id, game_id
+    );
 
     let submission_ids = helper::run_query(&pool, move |conn_sync| {
         let player_id = player_id;
@@ -551,7 +596,8 @@ pub async fn get_student_submissions(
         }
 
         query.load::<i64>(conn_sync)
-    }).await?;
+    })
+    .await?;
 
     info!(
         "Successfully fetched {} submission IDs for player_id: {} in game_id: {} with applied filters.",
@@ -587,11 +633,14 @@ pub async fn get_submission_data(
     );
     debug!("Get submission data params: {:?}", params);
 
-    let submission_data = helper::run_query(&pool, { let submission_id = submission_id; move |conn| {
-        sub_dsl::submissions
-            .find(submission_id)
-            .first::<SubmissionDataResponse>(conn)
-    }}).await?;
+    let submission_data = helper::run_query(&pool, {
+        move |conn| {
+            sub_dsl::submissions
+                .find(submission_id)
+                .first::<SubmissionDataResponse>(conn)
+        }
+    })
+    .await?;
 
     let game_id = submission_data.game_id;
     helper::check_instructor_game_permission(&pool, instructor_id, game_id).await?;
@@ -641,12 +690,12 @@ pub async fn get_exercise_stats(
     );
 
     let exercise_exists = helper::run_query(&pool, {
-        let exercise_id = exercise_id;
         move |conn| {
             diesel::select(exists(exercises_dsl::exercises.find(exercise_id)))
                 .get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     if !exercise_exists {
         error!(
@@ -663,7 +712,6 @@ pub async fn get_exercise_stats(
     let success_threshold = BigDecimal::from(50);
 
     let total_attempts = helper::run_query(&pool, {
-        let game_id = game_id; let exercise_id = exercise_id;
         move |conn| {
             sub_dsl::submissions
                 .filter(sub_dsl::game_id.eq(game_id))
@@ -671,10 +719,10 @@ pub async fn get_exercise_stats(
                 .count()
                 .get_result::<i64>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     let successful_attempts = helper::run_query(&pool, {
-        let game_id = game_id; let exercise_id = exercise_id;
         let success_threshold = success_threshold.clone();
         move |conn| {
             sub_dsl::submissions
@@ -684,10 +732,10 @@ pub async fn get_exercise_stats(
                 .count()
                 .get_result::<i64>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     let first_solutions_count = helper::run_query(&pool, {
-        let game_id = game_id; let exercise_id = exercise_id;
         move |conn| {
             sub_dsl::submissions
                 .filter(sub_dsl::game_id.eq(game_id))
@@ -698,17 +746,18 @@ pub async fn get_exercise_stats(
                 .count()
                 .get_result::<i64>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     let total_players_in_game = helper::run_query(&pool, {
-        let game_id = game_id;
         move |conn| {
             pr_dsl::player_registrations
                 .filter(pr_dsl::game_id.eq(game_id))
                 .count()
                 .get_result::<i64>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     let difficulty = if total_attempts > 0 {
         100.0 - (successful_attempts as f64 / total_attempts as f64 * 100.0)
@@ -772,12 +821,12 @@ pub async fn get_exercise_submissions(
     );
 
     let exercise_exists = helper::run_query(&pool, {
-        let exercise_id = exercise_id;
         move |conn| {
             diesel::select(exists(exercises_dsl::exercises.find(exercise_id)))
                 .get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     if !exercise_exists {
         error!(
@@ -810,7 +859,8 @@ pub async fn get_exercise_submissions(
         }
 
         query.load::<i64>(conn_sync)
-    }).await?;
+    })
+    .await?;
 
     info!(
         "Successfully fetched {} submission IDs for exercise_id: {} in game_id: {} with applied filters.",
@@ -847,11 +897,18 @@ pub async fn create_game(
             diesel::select(exists(instructors_dsl::instructors.find(instructor_id)))
                 .get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     if !instructor_exists {
-        error!("Cannot create game: Instructor with ID {} not found.", payload.instructor_id);
-        return Err(AppError::NotFound(format!("Instructor with ID {} not found.", payload.instructor_id)));
+        error!(
+            "Cannot create game: Instructor with ID {} not found.",
+            payload.instructor_id
+        );
+        return Err(AppError::NotFound(format!(
+            "Instructor with ID {} not found.",
+            payload.instructor_id
+        )));
     }
     info!("Instructor {} confirmed to exist.", payload.instructor_id);
 
@@ -863,13 +920,20 @@ pub async fn create_game(
                 .select(courses_dsl::programming_languages)
                 .first::<String>(conn)
         }
-    }).await;
+    })
+    .await;
 
     let allowed_languages_str = match course_languages {
         Ok(langs) => langs,
         Err(AppError::NotFound(_)) => {
-            error!("Cannot create game: Course with ID {} not found.", payload.course_id);
-            return Err(AppError::NotFound(format!("Course with ID {} not found.", payload.course_id)));
+            error!(
+                "Cannot create game: Course with ID {} not found.",
+                payload.course_id
+            );
+            return Err(AppError::NotFound(format!(
+                "Course with ID {} not found.",
+                payload.course_id
+            )));
         }
         Err(e) => return Err(e),
     };
@@ -890,7 +954,10 @@ pub async fn create_game(
             payload.programming_language, payload.course_id, allowed_languages
         )));
     }
-    info!("Programming language '{}' validated for course {}.", payload.programming_language, payload.course_id);
+    info!(
+        "Programming language '{}' validated for course {}.",
+        payload.programming_language, payload.course_id
+    );
 
     let total_exercises_count = helper::run_query(&pool, {
         let course_id = payload.course_id;
@@ -903,60 +970,78 @@ pub async fn create_game(
                 .count()
                 .get_result::<i64>(conn)
         }
-    }).await?;
-    info!("Calculated {} total exercises for course {} and language {}.", total_exercises_count, payload.course_id, payload.programming_language);
+    })
+    .await?;
+    info!(
+        "Calculated {} total exercises for course {} and language {}.",
+        total_exercises_count, payload.course_id, payload.programming_language
+    );
 
     let conn = pool.get().await?;
-    let creation_result: Result<i64, AppError> = conn.interact(move |conn_sync| {
-        let payload = payload;
-        conn_sync.transaction(|transaction_conn| {
-            let now = Utc::now();
-            let new_game = NewGame {
-                title: payload.title,
-                public: payload.public,
-                active: payload.active,
-                description: payload.description,
-                course_id: payload.course_id,
-                programming_language: payload.programming_language,
-                module_lock: payload.module_lock,
-                exercise_lock: payload.exercise_lock,
-                total_exercises: total_exercises_count as i32,
-                start_date: now,
-                end_date: now + Duration::days(365),
-            };
+    let creation_result: Result<i64, AppError> = conn
+        .interact(move |conn_sync| {
+            let payload = payload;
+            conn_sync.transaction(|transaction_conn| {
+                let now = Utc::now();
+                let new_game = NewGame {
+                    title: payload.title,
+                    public: payload.public,
+                    active: payload.active,
+                    description: payload.description,
+                    course_id: payload.course_id,
+                    programming_language: payload.programming_language,
+                    module_lock: payload.module_lock,
+                    exercise_lock: payload.exercise_lock,
+                    total_exercises: total_exercises_count as i32,
+                    start_date: now,
+                    end_date: now + Duration::days(365),
+                };
 
-            let inserted_game_id = diesel::insert_into(games_dsl::games)
-                .values(&new_game)
-                .returning(games_dsl::id)
-                .get_result::<i64>(transaction_conn)
-                .map_err(|e| {
-                    if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) = e {
-                        AppError::NotFound("Referenced course not found during transaction.".to_string())
-                    } else {
-                        AppError::from(e)
-                    }
-                })?;
+                let inserted_game_id = diesel::insert_into(games_dsl::games)
+                    .values(&new_game)
+                    .returning(games_dsl::id)
+                    .get_result::<i64>(transaction_conn)
+                    .map_err(|e| {
+                        if let DieselError::DatabaseError(
+                            DatabaseErrorKind::ForeignKeyViolation,
+                            _,
+                        ) = e
+                        {
+                            AppError::NotFound(
+                                "Referenced course not found during transaction.".to_string(),
+                            )
+                        } else {
+                            AppError::from(e)
+                        }
+                    })?;
 
-            let new_ownership = NewGameOwnership {
-                game_id: inserted_game_id,
-                instructor_id: payload.instructor_id,
-                owner: true,
-            };
+                let new_ownership = NewGameOwnership {
+                    game_id: inserted_game_id,
+                    instructor_id: payload.instructor_id,
+                    owner: true,
+                };
 
-            diesel::insert_into(go_dsl::game_ownership)
-                .values(&new_ownership)
-                .execute(transaction_conn)
-                .map_err(|e| {
-                    if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) = e {
-                        AppError::NotFound("Referenced instructor not found during transaction.".to_string())
-                    } else {
-                        AppError::from(e)
-                    }
-                })?;
+                diesel::insert_into(go_dsl::game_ownership)
+                    .values(&new_ownership)
+                    .execute(transaction_conn)
+                    .map_err(|e| {
+                        if let DieselError::DatabaseError(
+                            DatabaseErrorKind::ForeignKeyViolation,
+                            _,
+                        ) = e
+                        {
+                            AppError::NotFound(
+                                "Referenced instructor not found during transaction.".to_string(),
+                            )
+                        } else {
+                            AppError::from(e)
+                        }
+                    })?;
 
-            Ok(inserted_game_id)
+                Ok(inserted_game_id)
+            })
         })
-    }).await?;
+        .await?;
 
     creation_result.map(ApiResponse::ok)
 }
@@ -1008,15 +1093,21 @@ pub async fn modify_game(
         || changeset.exercise_lock.is_some();
 
     if !has_updates {
-        info!("No update fields provided for game {}. Returning success.", game_id);
+        info!(
+            "No update fields provided for game {}. Returning success.",
+            game_id
+        );
         return Ok(ApiResponse::ok(true));
     }
 
-    let rows_affected = helper::run_query(&pool, { let game_id = game_id; let changeset = changeset; move |conn| {
-        diesel::update(games_dsl::games.find(game_id))
-            .set(&changeset)
-            .execute(conn)
-    }}).await?;
+    let rows_affected = helper::run_query(&pool, {
+        move |conn| {
+            diesel::update(games_dsl::games.find(game_id))
+                .set(&changeset)
+                .execute(conn)
+        }
+    })
+    .await?;
 
     match rows_affected {
         1 => {
@@ -1024,12 +1115,23 @@ pub async fn modify_game(
             Ok(ApiResponse::ok(true))
         }
         0 => {
-            error!("Game {} modification failed: 0 rows affected (game not found after permission check).", game_id);
-            Err(AppError::NotFound(format!("Game with ID {} not found during update.", game_id)))
+            error!(
+                "Game {} modification failed: 0 rows affected (game not found after permission check).",
+                game_id
+            );
+            Err(AppError::NotFound(format!(
+                "Game with ID {} not found during update.",
+                game_id
+            )))
         }
         n => {
-            error!("Game {} modification failed: {} rows affected (unexpected state).", game_id, n);
-            Err(AppError::InternalServerError(anyhow!("Game modification failed unexpectedly (multiple rows affected).")))
+            error!(
+                "Game {} modification failed: {} rows affected (unexpected state).",
+                game_id, n
+            );
+            Err(AppError::InternalServerError(anyhow!(
+                "Game modification failed unexpectedly (multiple rows affected)."
+            )))
         }
     }
 }
@@ -1060,21 +1162,35 @@ pub async fn add_game_instructor(
     debug!("Add game instructor payload: {:?}", payload);
 
     helper::check_instructor_game_permission(&pool, requesting_instructor_id, game_id).await?;
-    info!("Permission check passed for instructor {} on game {}", requesting_instructor_id, game_id);
+    info!(
+        "Permission check passed for instructor {} on game {}",
+        requesting_instructor_id, game_id
+    );
 
     let instructor_to_add_exists = helper::run_query(&pool, {
-        let instructor_to_add_id = instructor_to_add_id;
         move |conn| {
-            diesel::select(exists(instructors_dsl::instructors.find(instructor_to_add_id)))
-                .get_result::<bool>(conn)
+            diesel::select(exists(
+                instructors_dsl::instructors.find(instructor_to_add_id),
+            ))
+            .get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     if !instructor_to_add_exists {
-        error!("Cannot add instructor: Instructor with ID {} not found.", instructor_to_add_id);
-        return Err(AppError::NotFound(format!("Instructor with ID {} not found.", instructor_to_add_id)));
+        error!(
+            "Cannot add instructor: Instructor with ID {} not found.",
+            instructor_to_add_id
+        );
+        return Err(AppError::NotFound(format!(
+            "Instructor with ID {} not found.",
+            instructor_to_add_id
+        )));
     }
-    info!("Instructor to add (ID {}) confirmed to exist.", instructor_to_add_id);
+    info!(
+        "Instructor to add (ID {}) confirmed to exist.",
+        instructor_to_add_id
+    );
 
     let operation_result = helper::run_query(&pool, move |conn| {
         let game_id = game_id;
@@ -1093,7 +1209,8 @@ pub async fn add_game_instructor(
             .do_update()
             .set(go_dsl::owner.eq(is_owner))
             .execute(conn)
-    }).await;
+    })
+    .await;
 
     match operation_result {
         Ok(rows_affected) => {
@@ -1105,9 +1222,16 @@ pub async fn add_game_instructor(
         }
         Err(AppError::InternalServerError(ref err)) => {
             if let Some(db_err) = err.downcast_ref::<DieselError>() {
-                if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) = db_err {
-                    error!("Database constraint violation during instructor addition: {:?}", err);
-                    return Err(AppError::NotFound("Game or Instructor not found (foreign key violation).".to_string()));
+                if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) =
+                    db_err
+                {
+                    error!(
+                        "Database constraint violation during instructor addition: {:?}",
+                        err
+                    );
+                    return Err(AppError::NotFound(
+                        "Game or Instructor not found (foreign key violation).".to_string(),
+                    ));
                 }
             }
             Err(operation_result.unwrap_err())
@@ -1141,7 +1265,10 @@ pub async fn remove_game_instructor(
     debug!("Remove game instructor payload: {:?}", payload);
 
     helper::check_instructor_game_permission(&pool, requesting_instructor_id, game_id).await?;
-    info!("Permission check passed for instructor {} on game {}", requesting_instructor_id, game_id);
+    info!(
+        "Permission check passed for instructor {} on game {}",
+        requesting_instructor_id, game_id
+    );
 
     let rows_affected = helper::run_query(&pool, move |conn| {
         let game_id = game_id;
@@ -1150,21 +1277,37 @@ pub async fn remove_game_instructor(
             go_dsl::game_ownership
                 .filter(go_dsl::game_id.eq(game_id))
                 .filter(go_dsl::instructor_id.eq(instructor_to_remove_id)),
-        ).execute(conn)
-    }).await?;
+        )
+        .execute(conn)
+    })
+    .await?;
 
     match rows_affected {
         1 => {
-            info!("Successfully removed instructor {} from game {}", instructor_to_remove_id, game_id);
+            info!(
+                "Successfully removed instructor {} from game {}",
+                instructor_to_remove_id, game_id
+            );
             Ok(ApiResponse::ok(true))
         }
         0 => {
-            warn!("Instructor {} was not associated with game {}. No record removed.", instructor_to_remove_id, game_id);
-            Err(AppError::NotFound(format!("Instructor {} is not associated with game {}.", instructor_to_remove_id, game_id)))
+            warn!(
+                "Instructor {} was not associated with game {}. No record removed.",
+                instructor_to_remove_id, game_id
+            );
+            Err(AppError::NotFound(format!(
+                "Instructor {} is not associated with game {}.",
+                instructor_to_remove_id, game_id
+            )))
         }
         n => {
-            error!("Unexpected number of rows ({}) deleted when removing instructor {} from game {}", n, instructor_to_remove_id, game_id);
-            Err(AppError::InternalServerError(anyhow!("Unexpected error during instructor removal.")))
+            error!(
+                "Unexpected number of rows ({}) deleted when removing instructor {} from game {}",
+                n, instructor_to_remove_id, game_id
+            );
+            Err(AppError::InternalServerError(anyhow!(
+                "Unexpected error during instructor removal."
+            )))
         }
     }
 }
@@ -1193,7 +1336,10 @@ pub async fn activate_game(
     debug!("Activate game payload: {:?}", payload);
 
     helper::check_instructor_game_permission(&pool, instructor_id, game_id).await?;
-    info!("Permission check passed for instructor {} on game {}", instructor_id, game_id);
+    info!(
+        "Permission check passed for instructor {} on game {}",
+        instructor_id, game_id
+    );
 
     let rows_affected = helper::run_query(&pool, move |conn| {
         let game_id = game_id;
@@ -1203,7 +1349,8 @@ pub async fn activate_game(
                 games_dsl::updated_at.eq(diesel::dsl::now),
             ))
             .execute(conn)
-    }).await?;
+    })
+    .await?;
 
     match rows_affected {
         1 => {
@@ -1211,12 +1358,23 @@ pub async fn activate_game(
             Ok(ApiResponse::ok(true))
         }
         0 => {
-            error!("Game {} activation failed: 0 rows affected (game not found after permission check).", game_id);
-            Err(AppError::NotFound(format!("Game with ID {} not found during update.", game_id)))
+            error!(
+                "Game {} activation failed: 0 rows affected (game not found after permission check).",
+                game_id
+            );
+            Err(AppError::NotFound(format!(
+                "Game with ID {} not found during update.",
+                game_id
+            )))
         }
         n => {
-            error!("Game {} activation failed: {} rows affected (unexpected state).", game_id, n);
-            Err(AppError::InternalServerError(anyhow!("Game activation failed unexpectedly (multiple rows affected).")))
+            error!(
+                "Game {} activation failed: {} rows affected (unexpected state).",
+                game_id, n
+            );
+            Err(AppError::InternalServerError(anyhow!(
+                "Game activation failed unexpectedly (multiple rows affected)."
+            )))
         }
     }
 }
@@ -1245,7 +1403,10 @@ pub async fn stop_game(
     debug!("Stop game payload: {:?}", payload);
 
     helper::check_instructor_game_permission(&pool, instructor_id, game_id).await?;
-    info!("Permission check passed for instructor {} on game {}", instructor_id, game_id);
+    info!(
+        "Permission check passed for instructor {} on game {}",
+        instructor_id, game_id
+    );
 
     let rows_affected = helper::run_query(&pool, move |conn| {
         let game_id = game_id;
@@ -1255,7 +1416,8 @@ pub async fn stop_game(
                 games_dsl::updated_at.eq(diesel::dsl::now),
             ))
             .execute(conn)
-    }).await?;
+    })
+    .await?;
 
     match rows_affected {
         1 => {
@@ -1263,12 +1425,23 @@ pub async fn stop_game(
             Ok(ApiResponse::ok(true))
         }
         0 => {
-            error!("Game {} deactivation failed: 0 rows affected (game not found after permission check).", game_id);
-            Err(AppError::NotFound(format!("Game with ID {} not found during update.", game_id)))
+            error!(
+                "Game {} deactivation failed: 0 rows affected (game not found after permission check).",
+                game_id
+            );
+            Err(AppError::NotFound(format!(
+                "Game with ID {} not found during update.",
+                game_id
+            )))
         }
         n => {
-            error!("Game {} deactivation failed: {} rows affected (unexpected state).", game_id, n);
-            Err(AppError::InternalServerError(anyhow!("Game deactivation failed unexpectedly (multiple rows affected).")))
+            error!(
+                "Game {} deactivation failed: {} rows affected (unexpected state).",
+                game_id, n
+            );
+            Err(AppError::InternalServerError(anyhow!(
+                "Game deactivation failed unexpectedly (multiple rows affected)."
+            )))
         }
     }
 }
@@ -1298,7 +1471,10 @@ pub async fn remove_game_student(
     debug!("Remove game student payload: {:?}", payload);
 
     helper::check_instructor_game_permission(&pool, instructor_id, game_id).await?;
-    info!("Permission check passed for instructor {} on game {}", instructor_id, game_id);
+    info!(
+        "Permission check passed for instructor {} on game {}",
+        instructor_id, game_id
+    );
 
     let rows_affected = helper::run_query(&pool, move |conn| {
         let game_id = game_id;
@@ -1307,21 +1483,37 @@ pub async fn remove_game_student(
             pr_dsl::player_registrations
                 .filter(pr_dsl::game_id.eq(game_id))
                 .filter(pr_dsl::player_id.eq(student_id)),
-        ).execute(conn)
-    }).await?;
+        )
+        .execute(conn)
+    })
+    .await?;
 
     match rows_affected {
         1 => {
-            info!("Successfully removed student {} from game {}", student_id, game_id);
+            info!(
+                "Successfully removed student {} from game {}",
+                student_id, game_id
+            );
             Ok(ApiResponse::ok(true))
         }
         0 => {
-            warn!("Student {} was not registered in game {}. No record removed.", student_id, game_id);
-            Err(AppError::NotFound(format!("Student {} is not registered in game {}.", student_id, game_id)))
+            warn!(
+                "Student {} was not registered in game {}. No record removed.",
+                student_id, game_id
+            );
+            Err(AppError::NotFound(format!(
+                "Student {} is not registered in game {}.",
+                student_id, game_id
+            )))
         }
         n => {
-            error!("Unexpected number of rows ({}) deleted when removing student {} from game {}", n, student_id, game_id);
-            Err(AppError::InternalServerError(anyhow!("Unexpected error during student removal.")))
+            error!(
+                "Unexpected number of rows ({}) deleted when removing student {} from game {}",
+                n, student_id, game_id
+            );
+            Err(AppError::InternalServerError(anyhow!(
+                "Unexpected error during student removal."
+            )))
         }
     }
 }
@@ -1351,9 +1543,13 @@ pub async fn translate_email_to_player_id(
             .filter(players_dsl::email.eq(email_cloned))
             .select(players_dsl::id)
             .first::<i64>(conn)
-    }).await?;
+    })
+    .await?;
 
-    info!("Successfully found player ID {} for email {}", player_id, &email_to_find);
+    info!(
+        "Successfully found player ID {} for email {}",
+        player_id, &email_to_find
+    );
     Ok(ApiResponse::ok(player_id))
 }
 
@@ -1374,31 +1570,46 @@ pub async fn create_group(
     let display_name_cloned = payload.display_name.clone();
     let instructor_id = payload.instructor_id;
 
-    info!("Attempting to create group '{}' by instructor {}", &display_name_cloned, instructor_id);
+    info!(
+        "Attempting to create group '{}' by instructor {}",
+        &display_name_cloned, instructor_id
+    );
     debug!("Create group payload: {:?}", payload);
 
     let instructor_exists = helper::run_query(&pool, {
-        let instructor_id = instructor_id;
         move |conn| {
             diesel::select(exists(instructors_dsl::instructors.find(instructor_id)))
                 .get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
     if !instructor_exists {
-        error!("Cannot create group: Instructor with ID {} not found.", instructor_id);
-        return Err(AppError::NotFound(format!("Instructor with ID {} not found.", instructor_id)));
+        error!(
+            "Cannot create group: Instructor with ID {} not found.",
+            instructor_id
+        );
+        return Err(AppError::NotFound(format!(
+            "Instructor with ID {} not found.",
+            instructor_id
+        )));
     }
 
     let name_taken = helper::run_query(&pool, {
         let name = display_name_cloned.clone();
         move |conn| {
-            diesel::select(exists(groups_dsl::groups.filter(groups_dsl::display_name.eq(name))))
-                .get_result::<bool>(conn)
+            diesel::select(exists(
+                groups_dsl::groups.filter(groups_dsl::display_name.eq(name)),
+            ))
+            .get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
     if name_taken {
         warn!("Group name '{}' is already taken.", &display_name_cloned);
-        return Err(AppError::Conflict(format!("Group name '{}' is already taken.", display_name_cloned)));
+        return Err(AppError::Conflict(format!(
+            "Group name '{}' is already taken.",
+            display_name_cloned
+        )));
     }
 
     let members_to_add = payload.member_list.clone();
@@ -1411,74 +1622,102 @@ pub async fn create_group(
                     .count()
                     .get_result::<i64>(conn)
             }
-        }).await?;
+        })
+        .await?;
 
         if existing_players_count != members_to_add.len() as i64 {
-            error!("Cannot create group: One or more player IDs in memberList do not exist. Expected {}, found {}.", members_to_add.len(), existing_players_count);
-            return Err(AppError::NotFound("One or more players listed as members do not exist.".to_string()));
+            error!(
+                "Cannot create group: One or more player IDs in memberList do not exist. Expected {}, found {}.",
+                members_to_add.len(),
+                existing_players_count
+            );
+            return Err(AppError::NotFound(
+                "One or more players listed as members do not exist.".to_string(),
+            ));
         }
         info!("All {} specified members validated.", members_to_add.len());
     }
 
     let conn = pool.get().await?;
-    let creation_result: Result<i64, AppError> = conn.interact(move |conn_sync| {
-        let payload = payload;
-        let display_name_cloned = display_name_cloned;
-        conn_sync.transaction(|transaction_conn| {
-            let new_group = NewGroup {
-                display_name: payload.display_name,
-                display_avatar: payload.display_avatar,
-            };
-            let new_group_id = diesel::insert_into(groups_dsl::groups)
-                .values(&new_group)
-                .returning(groups_dsl::id)
-                .get_result::<i64>(transaction_conn)
-                .map_err(|e| {
-                    if let DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, _) = e {
-                        AppError::Conflict(format!("Group name '{}' is already taken (race condition).", display_name_cloned))
-                    } else {
-                        AppError::from(e)
-                    }
-                })?;
-
-            let new_ownership = NewGroupOwnership {
-                group_id: new_group_id,
-                instructor_id: payload.instructor_id,
-                owner: true,
-            };
-            diesel::insert_into(gro_dsl::group_ownership)
-                .values(&new_ownership)
-                .execute(transaction_conn)
-                .map_err(|e| {
-                    if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) = e {
-                        AppError::NotFound("Referenced instructor not found during transaction.".to_string())
-                    } else {
-                        AppError::from(e)
-                    }
-                })?;
-
-            if !payload.member_list.is_empty() {
-                let new_members: Vec<NewPlayerGroup> = payload
-                    .member_list
-                    .iter()
-                    .map(|&player_id| NewPlayerGroup { player_id, group_id: new_group_id })
-                    .collect();
-
-                diesel::insert_into(pg_dsl::player_groups)
-                    .values(&new_members)
-                    .execute(transaction_conn)
+    let creation_result: Result<i64, AppError> = conn
+        .interact(move |conn_sync| {
+            let payload = payload;
+            let display_name_cloned = display_name_cloned;
+            conn_sync.transaction(|transaction_conn| {
+                let new_group = NewGroup {
+                    display_name: payload.display_name,
+                    display_avatar: payload.display_avatar,
+                };
+                let new_group_id = diesel::insert_into(groups_dsl::groups)
+                    .values(&new_group)
+                    .returning(groups_dsl::id)
+                    .get_result::<i64>(transaction_conn)
                     .map_err(|e| {
-                        if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) = e {
-                            AppError::NotFound("Referenced player not found during transaction.".to_string())
+                        if let DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, _) = e
+                        {
+                            AppError::Conflict(format!(
+                                "Group name '{}' is already taken (race condition).",
+                                display_name_cloned
+                            ))
                         } else {
                             AppError::from(e)
                         }
                     })?;
-            }
 
-            Ok(new_group_id)
+                let new_ownership = NewGroupOwnership {
+                    group_id: new_group_id,
+                    instructor_id: payload.instructor_id,
+                    owner: true,
+                };
+                diesel::insert_into(gro_dsl::group_ownership)
+                    .values(&new_ownership)
+                    .execute(transaction_conn)
+                    .map_err(|e| {
+                        if let DieselError::DatabaseError(
+                            DatabaseErrorKind::ForeignKeyViolation,
+                            _,
+                        ) = e
+                        {
+                            AppError::NotFound(
+                                "Referenced instructor not found during transaction.".to_string(),
+                            )
+                        } else {
+                            AppError::from(e)
+                        }
+                    })?;
+
+                if !payload.member_list.is_empty() {
+                    let new_members: Vec<NewPlayerGroup> = payload
+                        .member_list
+                        .iter()
+                        .map(|&player_id| NewPlayerGroup {
+                            player_id,
+                            group_id: new_group_id,
+                        })
+                        .collect();
+
+                    diesel::insert_into(pg_dsl::player_groups)
+                        .values(&new_members)
+                        .execute(transaction_conn)
+                        .map_err(|e| {
+                            if let DieselError::DatabaseError(
+                                DatabaseErrorKind::ForeignKeyViolation,
+                                _,
+                            ) = e
+                            {
+                                AppError::NotFound(
+                                    "Referenced player not found during transaction.".to_string(),
+                                )
+                            } else {
+                                AppError::from(e)
+                            }
+                        })?;
+                }
+
+                Ok(new_group_id)
+            })
         })
-    }).await?;
+        .await?;
 
     creation_result.map(ApiResponse::ok)
 }
@@ -1500,11 +1739,17 @@ pub async fn dissolve_group(
     let instructor_id = payload.instructor_id;
     let group_id = payload.group_id;
 
-    info!("Attempting to dissolve group {} requested by instructor {}", group_id, instructor_id);
+    info!(
+        "Attempting to dissolve group {} requested by instructor {}",
+        group_id, instructor_id
+    );
     debug!("Dissolve group payload: {:?}", payload);
 
     helper::check_instructor_group_permission(&pool, instructor_id, group_id).await?;
-    info!("Permission check passed for instructor {} on group {}", instructor_id, group_id);
+    info!(
+        "Permission check passed for instructor {} on group {}",
+        instructor_id, group_id
+    );
 
     let conn = pool.get().await?;
     let deletion_result: Result<(), AppError> = conn.interact(move |conn_sync| {
@@ -1557,52 +1802,77 @@ pub async fn add_group_member(
     let group_id = payload.group_id;
     let player_id = payload.player_id;
 
-    info!("Attempting to add player {} to group {} requested by instructor {}", player_id, group_id, instructor_id);
+    info!(
+        "Attempting to add player {} to group {} requested by instructor {}",
+        player_id, group_id, instructor_id
+    );
     debug!("Add group member payload: {:?}", payload);
 
     helper::check_instructor_group_permission(&pool, instructor_id, group_id).await?;
-    info!("Permission check passed for instructor {} on group {}", instructor_id, group_id);
+    info!(
+        "Permission check passed for instructor {} on group {}",
+        instructor_id, group_id
+    );
 
     let player_exists = helper::run_query(&pool, {
-        let player_id = player_id;
         move |conn| {
-            diesel::select(exists(players_dsl::players.find(player_id)))
-                .get_result::<bool>(conn)
+            diesel::select(exists(players_dsl::players.find(player_id))).get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     if !player_exists {
         error!("Cannot add member: Player with ID {} not found.", player_id);
-        return Err(AppError::NotFound(format!("Player with ID {} not found.", player_id)));
+        return Err(AppError::NotFound(format!(
+            "Player with ID {} not found.",
+            player_id
+        )));
     }
     info!("Player to add (ID {}) confirmed to exist.", player_id);
 
     let operation_result = helper::run_query(&pool, move |conn| {
         let player_id = player_id;
         let group_id = group_id;
-        let new_membership = NewPlayerGroup { player_id, group_id };
+        let new_membership = NewPlayerGroup {
+            player_id,
+            group_id,
+        };
 
         diesel::insert_into(pg_dsl::player_groups)
             .values(&new_membership)
             .on_conflict((pg_dsl::player_id, pg_dsl::group_id))
             .do_nothing()
             .execute(conn)
-    }).await;
+    })
+    .await;
 
     match operation_result {
         Ok(rows_affected) => {
             if rows_affected == 1 {
-                info!("Successfully added player {} to group {}", player_id, group_id);
+                info!(
+                    "Successfully added player {} to group {}",
+                    player_id, group_id
+                );
             } else {
-                info!("Player {} was already a member of group {}. No changes made.", player_id, group_id);
+                info!(
+                    "Player {} was already a member of group {}. No changes made.",
+                    player_id, group_id
+                );
             }
             Ok(ApiResponse::ok(true))
         }
         Err(AppError::InternalServerError(ref err)) => {
             if let Some(db_err) = err.downcast_ref::<DieselError>() {
-                if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) = db_err {
-                    error!("Database constraint violation during member addition: {:?}", err);
-                    return Err(AppError::NotFound("Group or Player not found (foreign key violation).".to_string()));
+                if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) =
+                    db_err
+                {
+                    error!(
+                        "Database constraint violation during member addition: {:?}",
+                        err
+                    );
+                    return Err(AppError::NotFound(
+                        "Group or Player not found (foreign key violation).".to_string(),
+                    ));
                 }
             }
             Err(operation_result.unwrap_err())
@@ -1629,11 +1899,17 @@ pub async fn remove_group_member(
     let group_id = payload.group_id;
     let player_id = payload.player_id;
 
-    info!("Attempting to remove player {} from group {} requested by instructor {}", player_id, group_id, instructor_id);
+    info!(
+        "Attempting to remove player {} from group {} requested by instructor {}",
+        player_id, group_id, instructor_id
+    );
     debug!("Remove group member payload: {:?}", payload);
 
     helper::check_instructor_group_permission(&pool, instructor_id, group_id).await?;
-    info!("Permission check passed for instructor {} on group {}", instructor_id, group_id);
+    info!(
+        "Permission check passed for instructor {} on group {}",
+        instructor_id, group_id
+    );
 
     let rows_affected = helper::run_query(&pool, move |conn| {
         let group_id = group_id;
@@ -1642,21 +1918,37 @@ pub async fn remove_group_member(
             pg_dsl::player_groups
                 .filter(pg_dsl::group_id.eq(group_id))
                 .filter(pg_dsl::player_id.eq(player_id)),
-        ).execute(conn)
-    }).await?;
+        )
+        .execute(conn)
+    })
+    .await?;
 
     match rows_affected {
         1 => {
-            info!("Successfully removed player {} from group {}", player_id, group_id);
+            info!(
+                "Successfully removed player {} from group {}",
+                player_id, group_id
+            );
             Ok(ApiResponse::ok(true))
         }
         0 => {
-            warn!("Player {} was not a member of group {}. No record removed.", player_id, group_id);
-            Err(AppError::NotFound(format!("Player {} is not a member of group {}.", player_id, group_id)))
+            warn!(
+                "Player {} was not a member of group {}. No record removed.",
+                player_id, group_id
+            );
+            Err(AppError::NotFound(format!(
+                "Player {} is not a member of group {}.",
+                player_id, group_id
+            )))
         }
         n => {
-            error!("Unexpected number of rows ({}) deleted when removing player {} from group {}", n, player_id, group_id);
-            Err(AppError::InternalServerError(anyhow!("Unexpected error during member removal.")))
+            error!(
+                "Unexpected number of rows ({}) deleted when removing player {} from group {}",
+                n, player_id, group_id
+            );
+            Err(AppError::InternalServerError(anyhow!(
+                "Unexpected error during member removal."
+            )))
         }
     }
 }
@@ -1676,98 +1968,134 @@ pub async fn create_player(
     State(pool): State<Pool>,
     Json(payload): Json<CreatePlayerPayload>,
 ) -> Result<ApiResponse<i64>, AppError> {
-    info!("Attempting to create player with email '{}' requested by instructor {}", payload.email, payload.instructor_id);
+    info!(
+        "Attempting to create player with email '{}' requested by instructor {}",
+        payload.email, payload.instructor_id
+    );
     debug!("Create player payload: {:?}", payload);
 
     if let Some(game_id) = payload.game_id {
         helper::check_instructor_game_permission(&pool, payload.instructor_id, game_id).await?;
-        info!("Instructor {} has permission for game {}", payload.instructor_id, game_id);
+        info!(
+            "Instructor {} has permission for game {}",
+            payload.instructor_id, game_id
+        );
     }
     if let Some(group_id) = payload.group_id {
         helper::check_instructor_group_permission(&pool, payload.instructor_id, group_id).await?;
-        info!("Instructor {} has permission for group {}", payload.instructor_id, group_id);
+        info!(
+            "Instructor {} has permission for group {}",
+            payload.instructor_id, group_id
+        );
     }
     if payload.game_id.is_none() && payload.group_id.is_none() && payload.instructor_id != 0 {
-        warn!("Permission denied: Instructor {} cannot create player without game/group context.", payload.instructor_id);
-        return Err(AppError::Forbidden("Instructor lacks permission to create player without game/group context.".to_string()));
+        warn!(
+            "Permission denied: Instructor {} cannot create player without game/group context.",
+            payload.instructor_id
+        );
+        return Err(AppError::Forbidden(
+            "Instructor lacks permission to create player without game/group context.".to_string(),
+        ));
     }
 
     let email_taken = helper::run_query(&pool, {
         let email = payload.email.clone();
         move |conn| {
-            diesel::select(exists(players_dsl::players.filter(players_dsl::email.eq(email))))
-                .get_result::<bool>(conn)
+            diesel::select(exists(
+                players_dsl::players.filter(players_dsl::email.eq(email)),
+            ))
+            .get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
     if email_taken {
         warn!("Player email '{}' is already taken.", payload.email);
-        return Err(AppError::Conflict("Player email is already taken.".to_string()));
+        return Err(AppError::Conflict(
+            "Player email is already taken.".to_string(),
+        ));
     }
 
     let conn = pool.get().await?;
-    let creation_result: Result<i64, AppError> = conn.interact(move |conn_sync| {
-        let payload = payload;
-        conn_sync.transaction(|transaction_conn| {
-            let new_player = NewPlayer {
-                email: payload.email,
-                display_name: payload.display_name,
-                display_avatar: payload.display_avatar,
-            };
-            let new_player_id = diesel::insert_into(players_dsl::players)
-                .values(&new_player)
-                .returning(players_dsl::id)
-                .get_result::<i64>(transaction_conn)
-                .map_err(|e| {
-                    if let DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, _) = e {
-                        AppError::Conflict("Player email is already taken (race condition).".to_string())
-                    } else {
-                        AppError::from(e)
-                    }
-                })?;
-
-            if let Some(game_id) = payload.game_id {
-                let language = payload.language.as_deref().unwrap_or("en").to_string();
-                let new_registration = NewPlayerRegistration {
-                    player_id: new_player_id,
-                    game_id,
-                    language,
-                    progress: 0,
-                    game_state: json!({}),
+    let creation_result: Result<i64, AppError> = conn
+        .interact(move |conn_sync| {
+            let payload = payload;
+            conn_sync.transaction(|transaction_conn| {
+                let new_player = NewPlayer {
+                    email: payload.email,
+                    display_name: payload.display_name,
+                    display_avatar: payload.display_avatar,
                 };
-                diesel::insert_into(pr_dsl::player_registrations)
-                    .values(&new_registration)
-                    .execute(transaction_conn)
+                let new_player_id = diesel::insert_into(players_dsl::players)
+                    .values(&new_player)
+                    .returning(players_dsl::id)
+                    .get_result::<i64>(transaction_conn)
                     .map_err(|e| {
-                        if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) = e {
-                            AppError::NotFound("Referenced game not found during transaction.".to_string())
+                        if let DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, _) = e
+                        {
+                            AppError::Conflict(
+                                "Player email is already taken (race condition).".to_string(),
+                            )
                         } else {
                             AppError::from(e)
                         }
                     })?;
-            }
 
-            if let Some(group_id) = payload.group_id {
-                let new_membership = NewPlayerGroup {
-                    player_id: new_player_id,
-                    group_id,
-                };
-                diesel::insert_into(pg_dsl::player_groups)
-                    .values(&new_membership)
-                    .on_conflict((pg_dsl::player_id, pg_dsl::group_id))
-                    .do_nothing()
-                    .execute(transaction_conn)
-                    .map_err(|e| {
-                        if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) = e {
-                            AppError::NotFound("Referenced group not found during transaction.".to_string())
-                        } else {
-                            AppError::from(e)
-                        }
-                    })?;
-            }
+                if let Some(game_id) = payload.game_id {
+                    let language = payload.language.as_deref().unwrap_or("en").to_string();
+                    let new_registration = NewPlayerRegistration {
+                        player_id: new_player_id,
+                        game_id,
+                        language,
+                        progress: 0,
+                        game_state: json!({}),
+                    };
+                    diesel::insert_into(pr_dsl::player_registrations)
+                        .values(&new_registration)
+                        .execute(transaction_conn)
+                        .map_err(|e| {
+                            if let DieselError::DatabaseError(
+                                DatabaseErrorKind::ForeignKeyViolation,
+                                _,
+                            ) = e
+                            {
+                                AppError::NotFound(
+                                    "Referenced game not found during transaction.".to_string(),
+                                )
+                            } else {
+                                AppError::from(e)
+                            }
+                        })?;
+                }
 
-            Ok(new_player_id)
+                if let Some(group_id) = payload.group_id {
+                    let new_membership = NewPlayerGroup {
+                        player_id: new_player_id,
+                        group_id,
+                    };
+                    diesel::insert_into(pg_dsl::player_groups)
+                        .values(&new_membership)
+                        .on_conflict((pg_dsl::player_id, pg_dsl::group_id))
+                        .do_nothing()
+                        .execute(transaction_conn)
+                        .map_err(|e| {
+                            if let DieselError::DatabaseError(
+                                DatabaseErrorKind::ForeignKeyViolation,
+                                _,
+                            ) = e
+                            {
+                                AppError::NotFound(
+                                    "Referenced group not found during transaction.".to_string(),
+                                )
+                            } else {
+                                AppError::from(e)
+                            }
+                        })?;
+                }
+
+                Ok(new_player_id)
+            })
         })
-    }).await?;
+        .await?;
 
     creation_result.map(ApiResponse::ok)
 }
@@ -1789,26 +2117,42 @@ pub async fn disable_player(
     let instructor_id = payload.instructor_id;
     let player_id = payload.player_id;
 
-    info!("Attempting to disable player {} requested by instructor {}", player_id, instructor_id);
+    info!(
+        "Attempting to disable player {} requested by instructor {}",
+        player_id, instructor_id
+    );
     debug!("Disable player payload: {:?}", payload);
 
     if instructor_id != 0 {
-        warn!("Permission denied: Instructor {} is not admin (ID 0) and cannot disable players.", instructor_id);
-        return Err(AppError::Forbidden("Only admin users can disable players.".to_string()));
+        warn!(
+            "Permission denied: Instructor {} is not admin (ID 0) and cannot disable players.",
+            instructor_id
+        );
+        return Err(AppError::Forbidden(
+            "Only admin users can disable players.".to_string(),
+        ));
     }
-    info!("Admin permission confirmed for instructor {}", instructor_id);
+    info!(
+        "Admin permission confirmed for instructor {}",
+        instructor_id
+    );
 
     let player_exists = helper::run_query(&pool, {
-        let player_id = player_id;
         move |conn| {
-            diesel::select(exists(players_dsl::players.find(player_id)))
-                .get_result::<bool>(conn)
+            diesel::select(exists(players_dsl::players.find(player_id))).get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     if !player_exists {
-        error!("Cannot disable player: Player with ID {} not found.", player_id);
-        return Err(AppError::NotFound(format!("Player with ID {} not found.", player_id)));
+        error!(
+            "Cannot disable player: Player with ID {} not found.",
+            player_id
+        );
+        return Err(AppError::NotFound(format!(
+            "Player with ID {} not found.",
+            player_id
+        )));
     }
     info!("Player {} confirmed to exist.", player_id);
 
@@ -1817,7 +2161,8 @@ pub async fn disable_player(
         diesel::update(players_dsl::players.find(player_id))
             .set(players_dsl::disabled.eq(true))
             .execute(conn)
-    }).await?;
+    })
+    .await?;
 
     match rows_affected {
         1 => {
@@ -1825,12 +2170,23 @@ pub async fn disable_player(
             Ok(ApiResponse::ok(true))
         }
         0 => {
-            error!("Player {} disable failed: 0 rows affected (player not found during update).", player_id);
-            Err(AppError::NotFound(format!("Player with ID {} not found during update.", player_id)))
+            error!(
+                "Player {} disable failed: 0 rows affected (player not found during update).",
+                player_id
+            );
+            Err(AppError::NotFound(format!(
+                "Player with ID {} not found during update.",
+                player_id
+            )))
         }
         n => {
-            error!("Player {} disable failed: {} rows affected (unexpected state).", player_id, n);
-            Err(AppError::InternalServerError(anyhow!("Player disable failed unexpectedly (multiple rows affected).")))
+            error!(
+                "Player {} disable failed: {} rows affected (unexpected state).",
+                player_id, n
+            );
+            Err(AppError::InternalServerError(anyhow!(
+                "Player disable failed unexpectedly (multiple rows affected)."
+            )))
         }
     }
 }
@@ -1852,28 +2208,47 @@ pub async fn delete_player(
     let instructor_id = payload.instructor_id;
     let player_id = payload.player_id;
 
-    info!("Attempting to DELETE player {} requested by instructor {}", player_id, instructor_id);
+    info!(
+        "Attempting to DELETE player {} requested by instructor {}",
+        player_id, instructor_id
+    );
     debug!("Delete player payload: {:?}", payload);
 
     if instructor_id != 0 {
-        warn!("Permission denied: Instructor {} is not admin (ID 0) and cannot delete players.", instructor_id);
-        return Err(AppError::Forbidden("Only admin users can delete players.".to_string()));
+        warn!(
+            "Permission denied: Instructor {} is not admin (ID 0) and cannot delete players.",
+            instructor_id
+        );
+        return Err(AppError::Forbidden(
+            "Only admin users can delete players.".to_string(),
+        ));
     }
-    info!("Admin permission confirmed for instructor {}", instructor_id);
+    info!(
+        "Admin permission confirmed for instructor {}",
+        instructor_id
+    );
 
     let player_exists = helper::run_query(&pool, {
-        let player_id = player_id;
         move |conn| {
-            diesel::select(exists(players_dsl::players.find(player_id)))
-                .get_result::<bool>(conn)
+            diesel::select(exists(players_dsl::players.find(player_id))).get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     if !player_exists {
-        error!("Cannot delete player: Player with ID {} not found.", player_id);
-        return Err(AppError::NotFound(format!("Player with ID {} not found.", player_id)));
+        error!(
+            "Cannot delete player: Player with ID {} not found.",
+            player_id
+        );
+        return Err(AppError::NotFound(format!(
+            "Player with ID {} not found.",
+            player_id
+        )));
     }
-    info!("Player {} confirmed to exist. Proceeding with deletion.", player_id);
+    info!(
+        "Player {} confirmed to exist. Proceeding with deletion.",
+        player_id
+    );
 
     let conn = pool.get().await?;
     let deletion_result: Result<(), AppError> = conn.interact(move |conn_sync| {

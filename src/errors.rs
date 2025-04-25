@@ -1,5 +1,5 @@
-use anyhow::anyhow;
 use crate::response::ApiResponse;
+use anyhow::anyhow;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use deadpool_diesel::InteractError;
@@ -49,12 +49,17 @@ impl From<diesel::result::Error> for AppError {
     fn from(err: diesel::result::Error) -> Self {
         match err {
             diesel::result::Error::NotFound => {
-                error!("Diesel NotFound error reached generic conversion: {:?}", err);
+                error!(
+                    "Diesel NotFound error reached generic conversion: {:?}",
+                    err
+                );
                 AppError::NotFound("Resource not found (database query)".to_string())
             }
             _ => {
                 error!("Unhandled Diesel error encountered: {:?}", err);
-                AppError::InternalServerError(anyhow::Error::new(err).context("Database query error"))
+                AppError::InternalServerError(
+                    anyhow::Error::new(err).context("Database query error"),
+                )
             }
         }
     }
@@ -71,7 +76,10 @@ impl IntoResponse for AppError {
             AppError::UnprocessableEntity(message) => (StatusCode::UNPROCESSABLE_ENTITY, message),
 
             AppError::InternalServerError(source) => {
-                error!("Responding with 500 Internal Server Error. Source: {:?}", source);
+                error!(
+                    "Responding with 500 Internal Server Error. Source: {:?}",
+                    source
+                );
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "An internal server error occurred".to_string(),
@@ -86,26 +94,5 @@ impl IntoResponse for AppError {
         };
 
         (status, body).into_response()
-    }
-}
-
-impl AppError {
-    pub fn bad_request(msg: impl Into<String>) -> Self {
-        AppError::BadRequest(msg.into())
-    }
-    pub fn not_found(msg: impl Into<String>) -> Self {
-        AppError::NotFound(msg.into())
-    }
-    pub fn forbidden(msg: impl Into<String>) -> Self {
-        AppError::Forbidden(msg.into())
-    }
-    pub fn conflict(msg: impl Into<String>) -> Self {
-        AppError::Conflict(msg.into())
-    }
-    pub fn unprocessable_entity(msg: impl Into<String>) -> Self {
-        AppError::UnprocessableEntity(msg.into())
-    }
-    pub fn unauthorized(msg: impl Into<String>) -> Self {
-        AppError::Unauthorized(msg.into())
     }
 }

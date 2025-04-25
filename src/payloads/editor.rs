@@ -1,8 +1,8 @@
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use std::vec::Vec;
-use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
 
 #[derive(Deserialize, Debug)]
 pub struct ImportExerciseData {

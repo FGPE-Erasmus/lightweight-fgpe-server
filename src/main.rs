@@ -77,14 +77,20 @@ fn init_protection_layer(args: &Args) -> anyhow::Result<KeycloakAuthLayer<String
 fn student_routes(keycloak_layer: KeycloakAuthLayer<String>) -> Router<Pool> {
     Router::new()
         // protected routes go here
-        .route("/get_available_games", get(api::student::get_available_games))
+        .route(
+            "/get_available_games",
+            get(api::student::get_available_games),
+        )
         .route("/join_game", post(api::student::join_game))
         .route("/save_game", post(api::student::save_game))
         .route("/load_game", post(api::student::load_game))
         .route("/leave_game", post(api::student::leave_game))
         .route("/set_game_lang", post(api::student::set_game_lang))
         .route("/get_player_games", get(api::student::get_player_games))
-        .route("/get_game_metadata/:registration_id", get(api::student::get_game_metadata))
+        .route(
+            "/get_game_metadata/:registration_id",
+            get(api::student::get_game_metadata),
+        )
         .route("/get_course_data", get(api::student::get_course_data))
         .route("/get_module_data", get(api::student::get_module_data))
         .route("/get_exercise_data", get(api::student::get_exercise_data))
@@ -92,38 +98,74 @@ fn student_routes(keycloak_layer: KeycloakAuthLayer<String>) -> Router<Pool> {
         .route("/unlock", post(api::student::unlock))
         .route("/get_last_solution", get(api::student::get_last_solution))
         .layer(keycloak_layer)
-        // public routes go here
+    // public routes go here
 }
 
 fn teacher_routes(keycloak_layer: KeycloakAuthLayer<String>) -> Router<Pool> {
     Router::new()
         // protected routes go here
-        .route("/get_instructor_games", get(api::teacher::get_instructor_games))
-        .route("/get_instructor_game_metadata", get(api::teacher::get_instructor_game_metadata))
+        .route(
+            "/get_instructor_games",
+            get(api::teacher::get_instructor_games),
+        )
+        .route(
+            "/get_instructor_game_metadata",
+            get(api::teacher::get_instructor_game_metadata),
+        )
         .route("/list_students", get(api::teacher::list_students))
-        .route("/get_student_progress", get(api::teacher::get_student_progress))
-        .route("/get_student_exercises", get(api::teacher::get_student_exercises))
-        .route("/get_student_submissions", get(api::teacher::get_student_submissions))
-        .route("/get_submission_data", get(api::teacher::get_submission_data))
+        .route(
+            "/get_student_progress",
+            get(api::teacher::get_student_progress),
+        )
+        .route(
+            "/get_student_exercises",
+            get(api::teacher::get_student_exercises),
+        )
+        .route(
+            "/get_student_submissions",
+            get(api::teacher::get_student_submissions),
+        )
+        .route(
+            "/get_submission_data",
+            get(api::teacher::get_submission_data),
+        )
         .route("/get_exercise_stats", get(api::teacher::get_exercise_stats))
-        .route("/get_exercise_submissions", get(api::teacher::get_exercise_submissions))
+        .route(
+            "/get_exercise_submissions",
+            get(api::teacher::get_exercise_submissions),
+        )
         .route("/create_game", post(api::teacher::create_game))
         .route("/modify_game", post(api::teacher::modify_game))
-        .route("/add_game_instructor", post(api::teacher::add_game_instructor))
-        .route("/remove_game_instructor", post(api::teacher::remove_game_instructor))
+        .route(
+            "/add_game_instructor",
+            post(api::teacher::add_game_instructor),
+        )
+        .route(
+            "/remove_game_instructor",
+            post(api::teacher::remove_game_instructor),
+        )
         .route("/activate_game", post(api::teacher::activate_game))
         .route("/stop_game", post(api::teacher::stop_game))
-        .route("/remove_game_student", post(api::teacher::remove_game_student))
-        .route("/translate_email_to_player_id", get(api::teacher::translate_email_to_player_id))
+        .route(
+            "/remove_game_student",
+            post(api::teacher::remove_game_student),
+        )
+        .route(
+            "/translate_email_to_player_id",
+            get(api::teacher::translate_email_to_player_id),
+        )
         .route("/create_group", post(api::teacher::create_group))
         .route("/dissolve_group", post(api::teacher::dissolve_group))
         .route("/add_group_member", post(api::teacher::add_group_member))
-        .route("/remove_group_member", post(api::teacher::remove_group_member))
+        .route(
+            "/remove_group_member",
+            post(api::teacher::remove_group_member),
+        )
         .route("/create_player", post(api::teacher::create_player))
         .route("/disable_player", post(api::teacher::disable_player))
         .route("/delete_player", post(api::teacher::delete_player))
         .layer(keycloak_layer)
-        // public routes go here
+    // public routes go here
 }
 
 fn editor_routes(keycloak_layer: KeycloakAuthLayer<String>) -> Router<Pool> {
@@ -132,7 +174,7 @@ fn editor_routes(keycloak_layer: KeycloakAuthLayer<String>) -> Router<Pool> {
         .route("/import_course", post(api::editor::import_course))
         .route("/export_course", get(api::editor::export_course))
         .layer(keycloak_layer)
-        // public routes go here
+    // public routes go here
 }
 
 fn init_router(pool: Pool, keycloak_layer: KeycloakAuthLayer<String>) -> Router {

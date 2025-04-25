@@ -166,7 +166,6 @@ pub struct RemoveGroupMemberPayload {
     pub player_id: i64,
 }
 
-
 #[derive(Deserialize, Debug)]
 pub struct CreatePlayerPayload {
     pub instructor_id: i64,

@@ -1,22 +1,16 @@
-use diesel::{QueryDsl, RunQueryDsl, PgConnection, SelectableHelper};
 use crate::errors::AppError;
-use tracing::log::{debug, error, info, warn};
 use crate::schema::{
-    game_ownership::dsl as go_dsl,
-    games::dsl as games_dsl,
-    groups::dsl as groups_dsl,
-    group_ownership::dsl as group_owner_dsl,
-    courses::dsl as courses_dsl,
-    course_ownership::dsl as course_owner_dsl
+    course_ownership::dsl as course_owner_dsl, courses::dsl as courses_dsl,
+    game_ownership::dsl as go_dsl, games::dsl as games_dsl,
+    group_ownership::dsl as group_owner_dsl, groups::dsl as groups_dsl,
 };
-use diesel::ExpressionMethods;
 use deadpool_diesel::postgres::Pool;
+use diesel::ExpressionMethods;
 use diesel::dsl::exists;
+use diesel::{PgConnection, QueryDsl, RunQueryDsl};
+use tracing::log::{debug, error, info, warn};
 
-pub(super) async fn run_query<T, F>(
-    pool: &Pool,
-    query: F,
-) -> Result<T, AppError>
+pub(super) async fn run_query<T, F>(pool: &Pool, query: F) -> Result<T, AppError>
 where
     F: FnOnce(&mut PgConnection) -> Result<T, diesel::result::Error> + Send + 'static,
     T: Send + 'static,
@@ -41,8 +35,10 @@ async fn check_permission_generic<CheckExistence, CheckPermission>(
     permission_check: CheckPermission,
 ) -> Result<(), AppError>
 where
-    CheckExistence: FnOnce(i64, &mut PgConnection) -> Result<bool, diesel::result::Error> + Send + 'static,
-    CheckPermission: FnOnce(i64, i64, &mut PgConnection) -> Result<bool, diesel::result::Error> + Send + 'static,
+    CheckExistence:
+        FnOnce(i64, &mut PgConnection) -> Result<bool, diesel::result::Error> + Send + 'static,
+    CheckPermission:
+        FnOnce(i64, i64, &mut PgConnection) -> Result<bool, diesel::result::Error> + Send + 'static,
 {
     info!(
         "Checking existence and permission for instructor_id: {} on {}_id: {}",
@@ -52,7 +48,8 @@ where
     let entity_exists = run_query(pool, {
         let entity_id_for_closure = entity_id;
         move |conn| existence_check(entity_id_for_closure, conn)
-    }).await?;
+    })
+    .await?;
 
     if !entity_exists {
         error!(
@@ -67,15 +64,22 @@ where
     info!("{} with ID {} confirmed to exist.", entity_name, entity_id);
 
     if instructor_id == 0 {
-        info!("Admin permission granted for existing {}_id: {}", entity_name, entity_id);
+        info!(
+            "Admin permission granted for existing {}_id: {}",
+            entity_name, entity_id
+        );
         Ok(())
     } else {
-        info!("Non-admin instructor. Checking {} ownership/permission.", entity_name);
+        info!(
+            "Non-admin instructor. Checking {} ownership/permission.",
+            entity_name
+        );
         let has_permission = run_query(pool, {
             let instructor_id_for_closure = instructor_id;
             let entity_id_for_closure = entity_id;
             move |conn| permission_check(instructor_id_for_closure, entity_id_for_closure, conn)
-        }).await?;
+        })
+        .await?;
 
         if has_permission {
             info!(
@@ -96,7 +100,6 @@ where
     }
 }
 
-
 /// Checks if an instructor has permission for a game.
 /// Returns Ok(()) if permission granted.
 /// Returns AppError::NotFound if the game doesn't exist.
@@ -113,12 +116,16 @@ pub async fn check_instructor_game_permission(
         game_id,
         "game",
         |id, conn| diesel::select(exists(games_dsl::games.find(id))).get_result::<bool>(conn),
-        |instr_id, ent_id, conn| diesel::select(exists(
-            go_dsl::game_ownership
-                .filter(go_dsl::instructor_id.eq(instr_id))
-                .filter(go_dsl::game_id.eq(ent_id)),
-        )).get_result::<bool>(conn)
-    ).await
+        |instr_id, ent_id, conn| {
+            diesel::select(exists(
+                go_dsl::game_ownership
+                    .filter(go_dsl::instructor_id.eq(instr_id))
+                    .filter(go_dsl::game_id.eq(ent_id)),
+            ))
+            .get_result::<bool>(conn)
+        },
+    )
+    .await
 }
 
 /// Checks if an instructor has owner permission for a group.
@@ -137,13 +144,17 @@ pub async fn check_instructor_group_permission(
         group_id,
         "group",
         |id, conn| diesel::select(exists(groups_dsl::groups.find(id))).get_result::<bool>(conn),
-        |instr_id, ent_id, conn| diesel::select(exists(
-            group_owner_dsl::group_ownership
-                .filter(group_owner_dsl::instructor_id.eq(instr_id))
-                .filter(group_owner_dsl::group_id.eq(ent_id))
-                .filter(group_owner_dsl::owner.eq(true)),
-        )).get_result::<bool>(conn)
-    ).await
+        |instr_id, ent_id, conn| {
+            diesel::select(exists(
+                group_owner_dsl::group_ownership
+                    .filter(group_owner_dsl::instructor_id.eq(instr_id))
+                    .filter(group_owner_dsl::group_id.eq(ent_id))
+                    .filter(group_owner_dsl::owner.eq(true)),
+            ))
+            .get_result::<bool>(conn)
+        },
+    )
+    .await
 }
 
 /// Checks if an instructor has owner permission for a course.
@@ -162,11 +173,15 @@ pub async fn check_instructor_course_permission(
         course_id,
         "course",
         |id, conn| diesel::select(exists(courses_dsl::courses.find(id))).get_result::<bool>(conn),
-        |instr_id, ent_id, conn| diesel::select(exists(
-            course_owner_dsl::course_ownership
-                .filter(course_owner_dsl::instructor_id.eq(instr_id))
-                .filter(course_owner_dsl::course_id.eq(ent_id))
-                .filter(course_owner_dsl::owner.eq(true)),
-        )).get_result::<bool>(conn)
-    ).await
+        |instr_id, ent_id, conn| {
+            diesel::select(exists(
+                course_owner_dsl::course_ownership
+                    .filter(course_owner_dsl::instructor_id.eq(instr_id))
+                    .filter(course_owner_dsl::course_id.eq(ent_id))
+                    .filter(course_owner_dsl::owner.eq(true)),
+            ))
+            .get_result::<bool>(conn)
+        },
+    )
+    .await
 }

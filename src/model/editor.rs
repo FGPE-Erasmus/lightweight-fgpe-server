@@ -1,4 +1,4 @@
-use crate::schema::{courses, course_ownership, modules, exercises};
+use crate::schema::{course_ownership, courses, exercises, modules};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
@@ -94,7 +94,6 @@ pub struct ExportModuleResponse {
     pub start_date: DateTime<Utc>,
     pub end_date: DateTime<Utc>,
     // #[serde(skip)] pub id: i64, // Keep internal ID if needed
-
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub exercises: Vec<ExportExerciseResponse>,
 }
@@ -109,7 +108,6 @@ pub struct ExportCourseResponse {
     pub gamification_complex_rules: String,
     pub gamification_rule_results: String,
     // pub public: bool, // Include if needed in export
-
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub modules: Vec<ExportModuleResponse>,
 }

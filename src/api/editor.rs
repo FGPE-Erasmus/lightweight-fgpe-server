@@ -1,28 +1,26 @@
-use std::collections::HashMap;
-use anyhow::anyhow;
-use axum::extract::{Query, State};
-use axum::Json;
-use bigdecimal::{BigDecimal, FromPrimitive};
-use chrono::{DateTime, Duration, Utc};
-use deadpool_diesel::postgres::Pool;
-use diesel::dsl::exists;
-use diesel::{Connection, ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
-use diesel::result::Error as DieselError;
-use tracing::instrument;
-use tracing::log::{debug, error, info, warn};
 use crate::errors::AppError;
+use crate::model::editor::{
+    CourseQueryResult, ExerciseQueryResult, ExportCourseResponse, ExportExerciseResponse,
+    ExportModuleResponse, ModuleQueryResult, NewCourse, NewCourseOwnership, NewExercise, NewModule,
+};
 use crate::payloads::editor::{ExportCourseParams, ImportCoursePayload};
 use crate::response::ApiResponse;
-use crate::{
-    schema::{
-        courses::dsl as courses_dsl,
-        course_ownership::dsl as course_owner_dsl,
-        modules::dsl as modules_dsl,
-        exercises::dsl as exercises_dsl,
-        instructors::dsl as instructors_dsl,
-    },
+use crate::schema::{
+    course_ownership::dsl as course_owner_dsl, courses::dsl as courses_dsl,
+    exercises::dsl as exercises_dsl, instructors::dsl as instructors_dsl,
+    modules::dsl as modules_dsl,
 };
-use crate::model::editor::{CourseQueryResult, ExerciseQueryResult, ExportCourseResponse, ExportExerciseResponse, ExportModuleResponse, ModuleQueryResult, NewCourse, NewCourseOwnership, NewExercise, NewModule};
+use axum::Json;
+use axum::extract::{Query, State};
+use bigdecimal::{BigDecimal, FromPrimitive};
+use chrono::{Duration, Utc};
+use deadpool_diesel::postgres::Pool;
+use diesel::dsl::exists;
+use diesel::result::Error as DieselError;
+use diesel::{Connection, ExpressionMethods, QueryDsl, RunQueryDsl};
+use std::collections::HashMap;
+use tracing::instrument;
+use tracing::log::{debug, error, info};
 
 /// Imports a complete course structure from JSON data.
 ///
@@ -52,12 +50,12 @@ pub async fn import_course(
     debug!("Import course payload: {:?}", payload);
 
     let instructor_exists = super::helper::run_query(&pool, {
-        let instructor_id = instructor_id;
         move |conn| {
             diesel::select(exists(instructors_dsl::instructors.find(instructor_id)))
                 .get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
 
     if !instructor_exists {
         error!(
@@ -69,7 +67,10 @@ pub async fn import_course(
             instructor_id
         )));
     }
-    info!("Requesting instructor {} confirmed to exist.", instructor_id);
+    info!(
+        "Requesting instructor {} confirmed to exist.",
+        instructor_id
+    );
 
     let conn = pool.get().await?;
     let import_result = conn
@@ -100,7 +101,10 @@ pub async fn import_course(
                 diesel::insert_into(course_owner_dsl::course_ownership)
                     .values(&new_ownership)
                     .execute(tx_conn)?;
-                info!("Inserted course ownership for instructor {}", payload.instructor_id);
+                info!(
+                    "Inserted course ownership for instructor {}",
+                    payload.instructor_id
+                );
 
                 let now = Utc::now();
                 let default_end_date = now + Duration::days(365);
@@ -119,11 +123,15 @@ pub async fn import_course(
                         .values(&new_module)
                         .returning(modules_dsl::id)
                         .get_result::<i64>(tx_conn)?;
-                    info!("Inserted module '{}' with ID: {}", new_module.title, new_module_id);
+                    info!(
+                        "Inserted module '{}' with ID: {}",
+                        new_module.title, new_module_id
+                    );
 
                     for exercise_data in module_data.exercises {
                         let new_exercise = NewExercise {
-                            version: BigDecimal::from_f64(1.0).unwrap_or_else(|| BigDecimal::from(1)),
+                            version: BigDecimal::from_f64(1.0)
+                                .unwrap_or_else(|| BigDecimal::from(1)),
                             module_id: new_module_id,
                             order: exercise_data.order,
                             title: exercise_data.title,
@@ -166,7 +174,6 @@ pub async fn import_course(
         }
     }
 }
-
 
 /// Exports the full structure of a course (details, modules, exercises) as JSON.
 ///
@@ -219,7 +226,7 @@ pub async fn export_course(
                 .first::<CourseQueryResult>(conn)
         }
     })
-        .await?;
+    .await?;
 
     let modules_db = super::helper::run_query(&pool, {
         move |conn| {
@@ -229,8 +236,12 @@ pub async fn export_course(
                 .load::<ModuleQueryResult>(conn)
         }
     })
-        .await?;
-    info!("Fetched {} modules for course {}", modules_db.len(), course_id);
+    .await?;
+    info!(
+        "Fetched {} modules for course {}",
+        modules_db.len(),
+        course_id
+    );
 
     let module_ids: Vec<i64> = modules_db.iter().map(|m| m.id).collect();
     let exercises_db = if !module_ids.is_empty() {
@@ -261,11 +272,15 @@ pub async fn export_course(
                     .load::<ExerciseQueryResult>(conn)
             }
         })
-            .await?
+        .await?
     } else {
         Vec::new()
     };
-    info!("Fetched {} exercises for course {}", exercises_db.len(), course_id);
+    info!(
+        "Fetched {} exercises for course {}",
+        exercises_db.len(),
+        course_id
+    );
 
     let mut exercises_by_module: HashMap<i64, Vec<ExportExerciseResponse>> = HashMap::new();
     for ex_query_res in exercises_db {
@@ -321,9 +336,6 @@ pub async fn export_course(
         modules: assembled_modules,
     };
 
-    info!(
-        "Successfully prepared export data for course {}",
-        course_id
-    );
+    info!("Successfully prepared export data for course {}", course_id);
     Ok(ApiResponse::ok(final_response))
 }

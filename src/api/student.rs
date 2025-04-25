@@ -1,3 +1,4 @@
+use super::helper;
 use crate::model::student::{
     CourseDataResponse, ExerciseDataResponse, GameMetadata, LastSolutionResponse,
     ModuleDataResponse, NewPlayerReward, NewPlayerUnlock, NewSubmission,
@@ -31,8 +32,6 @@ use serde_json::Value as JsonValue;
 use serde_json::json;
 use tracing::log::warn;
 use tracing::{debug, error, info, instrument};
-use super::helper as helper;
-
 
 /// Queries all available games that are public and active.
 ///
@@ -51,7 +50,7 @@ pub async fn get_available_games(
             .select(games_dsl::id)
             .load::<i64>(conn_sync)
     })
-        .await?;
+    .await?;
 
     info!("Successfully fetched {} available game IDs", game_ids.len());
     Ok(ApiResponse::ok(game_ids))
@@ -91,7 +90,7 @@ pub async fn join_game(
             .returning(crate::schema::player_registrations::id)
             .get_result::<i64>(conn_sync)
     })
-        .await;
+    .await;
 
     match insert_result {
         Ok(new_id) => {
@@ -108,7 +107,9 @@ pub async fn join_game(
                         DatabaseErrorKind::ForeignKeyViolation => {
                             warn!(
                                 "Failed to join game due to foreign key violation for player_id: {} or game_id: {}. Details: {}",
-                                payload.player_id, payload.game_id, info.message()
+                                payload.player_id,
+                                payload.game_id,
+                                info.message()
                             );
                             return Err(AppError::NotFound(format!(
                                 "Player with ID {} or Game with ID {} not found.",
@@ -118,7 +119,9 @@ pub async fn join_game(
                         DatabaseErrorKind::UniqueViolation => {
                             warn!(
                                 "Failed to join game due to unique constraint violation for player_id: {} and game_id: {}. Details: {}",
-                                payload.player_id, payload.game_id, info.message()
+                                payload.player_id,
+                                payload.game_id,
+                                info.message()
                             );
                             return Err(AppError::Conflict(format!(
                                 "Player {} is already registered in game {}.",
@@ -165,7 +168,7 @@ pub async fn save_game(
             ))
             .execute(conn_sync)
     })
-        .await?;
+    .await?;
 
     match rows_affected {
         0 => {
@@ -222,7 +225,7 @@ pub async fn load_game(
             .select(prs_dsl::game_state)
             .get_result::<JsonValue>(conn_sync)
     })
-        .await?;
+    .await?;
 
     info!(
         "Successfully loaded game state for registration_id: {}",
@@ -262,7 +265,7 @@ pub async fn leave_game(
             .set(prs_dsl::left_at.eq(now))
             .execute(conn_sync)
     })
-        .await?;
+    .await?;
 
     match rows_affected {
         0 => {
@@ -289,7 +292,9 @@ pub async fn leave_game(
             );
             Err(AppError::InternalServerError(anyhow!(
                 "Update affected {} rows, expected 0 or 1 for player {} in game {}",
-                n, payload.player_id, payload.game_id
+                n,
+                payload.player_id,
+                payload.game_id
             )))
         }
     }
@@ -329,7 +334,7 @@ pub async fn set_game_lang(
             .select(courses_dsl::languages)
             .first::<String>(conn_sync)
     })
-        .await?;
+    .await?;
 
     let allowed_languages: Vec<&str> = allowed_languages_str
         .split(',')
@@ -357,7 +362,7 @@ pub async fn set_game_lang(
             .set(prs_dsl::language.eq(language))
             .execute(conn_sync)
     })
-        .await?;
+    .await?;
 
     match update_result {
         1 => {
@@ -385,7 +390,9 @@ pub async fn set_game_lang(
             );
             Err(AppError::InternalServerError(anyhow!(
                 "Update affected {} rows, expected 1 for player {} in game {}",
-                n, player_id, game_id
+                n,
+                player_id,
+                game_id
             )))
         }
     }
@@ -420,7 +427,7 @@ pub async fn get_player_games(
         diesel::select(diesel::dsl::exists(players_dsl::players.find(player_id)))
             .get_result::<bool>(conn)
     })
-        .await?;
+    .await?;
 
     if !player_exists {
         error!("Player with ID {} not found.", player_id);
@@ -437,7 +444,8 @@ pub async fn get_player_games(
                 .filter(prs_dsl::player_id.eq(player_id))
                 .select(prs_dsl::id)
                 .load::<i64>(conn_sync)
-        }).await?
+        })
+        .await?
     } else {
         helper::run_query(&pool, move |conn_sync| {
             prs_dsl::player_registrations
@@ -447,7 +455,8 @@ pub async fn get_player_games(
                 .filter(games_dsl::active.eq(true))
                 .select(prs_dsl::id)
                 .load::<i64>(conn_sync)
-        }).await?
+        })
+        .await?
     };
 
     info!(
@@ -514,7 +523,7 @@ pub async fn get_game_metadata(
             ))
             .first::<QueryResultTuple>(conn_sync)
     })
-        .await?;
+    .await?;
 
     let metadata = GameMetadata {
         registration_id: data.0,
@@ -567,18 +576,19 @@ pub async fn get_course_data(
 
     type CourseInfoTuple = (i64, String, String, String); // course_id, conditions, complex, results
 
-    let (course_id, conditions, complex_rules, results) = helper::run_query(&pool, move |conn_sync| {
-        games_dsl::games
-            .filter(games_dsl::id.eq(game_id))
-            .inner_join(courses_dsl::courses.on(games_dsl::course_id.eq(courses_dsl::id)))
-            .select((
-                courses_dsl::id,
-                courses_dsl::gamification_rule_conditions,
-                courses_dsl::gamification_complex_rules,
-                courses_dsl::gamification_rule_results,
-            ))
-            .first::<CourseInfoTuple>(conn_sync)
-    })
+    let (course_id, conditions, complex_rules, results) =
+        helper::run_query(&pool, move |conn_sync| {
+            games_dsl::games
+                .filter(games_dsl::id.eq(game_id))
+                .inner_join(courses_dsl::courses.on(games_dsl::course_id.eq(courses_dsl::id)))
+                .select((
+                    courses_dsl::id,
+                    courses_dsl::gamification_rule_conditions,
+                    courses_dsl::gamification_complex_rules,
+                    courses_dsl::gamification_rule_results,
+                ))
+                .first::<CourseInfoTuple>(conn_sync)
+        })
         .await?;
 
     let lang_for_modules = language.clone();
@@ -589,7 +599,7 @@ pub async fn get_course_data(
             .select(modules_dsl::id)
             .load::<i64>(conn_sync)
     })
-        .await?;
+    .await?;
 
     let response_data = CourseDataResponse {
         gamification_rule_conditions: conditions,
@@ -638,18 +648,19 @@ pub async fn get_module_data(
 
     type ModuleInfoTuple = (i32, String, String, DateTime<Utc>, DateTime<Utc>); // order, title, desc, start, end
 
-    let (order, title, description, start_date, end_date) = helper::run_query(&pool, move |conn_sync| {
-        modules_dsl::modules
-            .filter(modules_dsl::id.eq(module_id))
-            .select((
-                modules_dsl::order,
-                modules_dsl::title,
-                modules_dsl::description,
-                modules_dsl::start_date,
-                modules_dsl::end_date,
-            ))
-            .first::<ModuleInfoTuple>(conn_sync)
-    })
+    let (order, title, description, start_date, end_date) =
+        helper::run_query(&pool, move |conn_sync| {
+            modules_dsl::modules
+                .filter(modules_dsl::id.eq(module_id))
+                .select((
+                    modules_dsl::order,
+                    modules_dsl::title,
+                    modules_dsl::description,
+                    modules_dsl::start_date,
+                    modules_dsl::end_date,
+                ))
+                .first::<ModuleInfoTuple>(conn_sync)
+        })
         .await?;
 
     let module_id_for_exercises = module_id;
@@ -661,7 +672,7 @@ pub async fn get_module_data(
             .select(exercises_dsl::id)
             .load::<i64>(conn_sync)
     })
-        .await?;
+    .await?;
 
     let response_data = ModuleDataResponse {
         order,
@@ -710,7 +721,20 @@ pub async fn get_exercise_data(
     );
 
     type ExerciseInfoTuple = (
-        i64, String, i32, String, String, String, String, String, String, String, JsonValue, String, bool, bool
+        i64,
+        String,
+        i32,
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        JsonValue,
+        String,
+        bool,
+        bool,
     ); // module_id, title, order, desc, init, pre, post, test, check, mode, params, diff, hidden, locked
 
     let (
@@ -749,7 +773,7 @@ pub async fn get_exercise_data(
             ))
             .first::<ExerciseInfoTuple>(conn)
     })
-        .await?;
+    .await?;
 
     type GameInfoTuple = (f64, bool); // module_lock, exercise_lock
     let (game_module_lock, game_exercise_lock) = helper::run_query(&pool, move |conn| {
@@ -758,7 +782,7 @@ pub async fn get_exercise_data(
             .select((games_dsl::module_lock, games_dsl::exercise_lock))
             .first::<GameInfoTuple>(conn)
     })
-        .await?;
+    .await?;
 
     let has_unlock = helper::run_query(&pool, move |conn| {
         diesel::dsl::select(diesel::dsl::exists(
@@ -766,9 +790,9 @@ pub async fn get_exercise_data(
                 .filter(pus_dsl::player_id.eq(player_id))
                 .filter(pus_dsl::exercise_id.eq(exercise_id)),
         ))
-            .get_result::<bool>(conn)
+        .get_result::<bool>(conn)
     })
-        .await?;
+    .await?;
 
     let hidden_flag = exercise_raw_hidden && !has_unlock;
 
@@ -776,31 +800,34 @@ pub async fn get_exercise_data(
 
     if !is_locked_by_condition && game_module_lock > 0.0 {
         let total_module_exercises = helper::run_query(&pool, {
-            let module_id = module_id;
             move |conn| {
                 exercises_dsl::exercises
                     .filter(exercises_dsl::module_id.eq(module_id))
                     .count()
                     .get_result::<i64>(conn)
             }
-        }).await?;
+        })
+        .await?;
 
         if total_module_exercises > 0 {
             let solved_in_module = helper::run_query(&pool, {
-                let player_id = player_id;
-                let game_id = game_id;
-                let module_id = module_id;
                 move |conn| {
                     sub_dsl::submissions
                         .filter(sub_dsl::player_id.eq(player_id))
                         .filter(sub_dsl::game_id.eq(game_id))
-                        .filter(sub_dsl::result.gt(BigDecimal::from_f64(0.0).expect("0.0 is valid BigDecimal")))
-                        .inner_join(exercises_dsl::exercises.on(sub_dsl::exercise_id.eq(exercises_dsl::id)))
+                        .filter(
+                            sub_dsl::result
+                                .gt(BigDecimal::from_f64(0.0).expect("0.0 is valid BigDecimal")),
+                        )
+                        .inner_join(
+                            exercises_dsl::exercises.on(sub_dsl::exercise_id.eq(exercises_dsl::id)),
+                        )
                         .filter(exercises_dsl::module_id.eq(module_id))
                         .select(diesel::dsl::count_distinct(sub_dsl::exercise_id))
                         .get_result::<i64>(conn)
                 }
-            }).await?;
+            })
+            .await?;
 
             let solved_ratio = solved_in_module as f64 / total_module_exercises as f64;
             if solved_ratio < game_module_lock {
@@ -811,8 +838,6 @@ pub async fn get_exercise_data(
 
     if !is_locked_by_condition && game_exercise_lock && order > 1 {
         let prev_exercise_id_opt = helper::run_query(&pool, {
-            let module_id = module_id;
-            let order = order;
             move |conn| {
                 exercises_dsl::exercises
                     .filter(exercises_dsl::module_id.eq(module_id))
@@ -821,23 +846,26 @@ pub async fn get_exercise_data(
                     .first::<i64>(conn)
                     .optional()
             }
-        }).await?;
+        })
+        .await?;
 
         if let Some(prev_exercise_id) = prev_exercise_id_opt {
-            let prev_solved = helper::run_query(&pool, {
-                let player_id = player_id;
-                let game_id = game_id;
-                move |conn| {
-                    diesel::dsl::select(diesel::dsl::exists(
-                        sub_dsl::submissions
-                            .filter(sub_dsl::player_id.eq(player_id))
-                            .filter(sub_dsl::game_id.eq(game_id))
-                            .filter(sub_dsl::exercise_id.eq(prev_exercise_id))
-                            .filter(sub_dsl::result.gt(BigDecimal::from_f64(0.0).expect("0.0 is valid BigDecimal"))),
-                    ))
+            let prev_solved =
+                helper::run_query(&pool, {
+                    move |conn| {
+                        diesel::dsl::select(diesel::dsl::exists(
+                            sub_dsl::submissions
+                                .filter(sub_dsl::player_id.eq(player_id))
+                                .filter(sub_dsl::game_id.eq(game_id))
+                                .filter(sub_dsl::exercise_id.eq(prev_exercise_id))
+                                .filter(sub_dsl::result.gt(
+                                    BigDecimal::from_f64(0.0).expect("0.0 is valid BigDecimal"),
+                                )),
+                        ))
                         .get_result::<bool>(conn)
-                }
-            }).await?;
+                    }
+                })
+                .await?;
 
             if !prev_solved {
                 is_locked_by_condition = true;
@@ -901,8 +929,7 @@ pub async fn submit_solution(
                 prs_dsl::player_registrations
                     .filter(prs_dsl::player_id.eq(player_id))
                     .filter(prs_dsl::game_id.eq(game_id))
-            )).get_result::<bool>(transaction_conn)
-                .map_err(DieselError::from)?;
+            )).get_result::<bool>(transaction_conn)?;
 
             if !registration_exists {
                 warn!("Player registration not found for player {} game {}. Cannot submit.", player_id, game_id);
@@ -918,8 +945,7 @@ pub async fn submit_solution(
                     .filter(sub_dsl::exercise_id.eq(exercise_id))
                     .filter(sub_dsl::game_id.eq(game_id))
                     .filter(sub_dsl::result.gt(BigDecimal::from_f64(0.0).expect("0.0 is valid BigDecimal")))
-            )).get_result::<bool>(transaction_conn)
-                .map_err(DieselError::from)?;
+            )).get_result::<bool>(transaction_conn)?;
 
             let is_first_correct = current_result_is_correct && !was_previously_solved;
 
@@ -960,8 +986,7 @@ pub async fn submit_solution(
                         .filter(prs_dsl::game_id.eq(game_id))
                 )
                     .set(prs_dsl::progress.eq(prs_dsl::progress + 1))
-                    .execute(transaction_conn)
-                    .map_err(DieselError::from)?;
+                    .execute(transaction_conn)?;
 
                 if rows_affected != 1 {
                     error!("Failed to update progress for player {} game {}: Expected 1 row affected, got {}",
@@ -1150,7 +1175,7 @@ pub async fn get_last_solution(
         diesel::dsl::select(diesel::dsl::exists(players_dsl::players.find(player_id)))
             .get_result::<bool>(conn)
     })
-        .await?;
+    .await?;
     if !player_exists {
         error!("Player with ID {} not found.", player_id);
         return Err(AppError::NotFound(format!(
@@ -1160,14 +1185,14 @@ pub async fn get_last_solution(
     }
 
     let exercise_exists = helper::run_query(&pool, {
-        let exercise_id = exercise_id;
         move |conn| {
             diesel::dsl::select(diesel::dsl::exists(
                 exercises_dsl::exercises.find(exercise_id),
             ))
-                .get_result::<bool>(conn)
+            .get_result::<bool>(conn)
         }
-    }).await?;
+    })
+    .await?;
     if !exercise_exists {
         error!("Exercise with ID {} not found.", exercise_id);
         return Err(AppError::NotFound(format!(
@@ -1186,18 +1211,19 @@ pub async fn get_last_solution(
     );
 
     let last_correct_result: Result<LastSolutionResponse, AppError> = helper::run_query(&pool, {
-        let player_id = player_id;
-        let exercise_id = exercise_id;
         move |conn| {
             sub_dsl::submissions
                 .filter(sub_dsl::player_id.eq(player_id))
                 .filter(sub_dsl::exercise_id.eq(exercise_id))
-                .filter(sub_dsl::result.gt(BigDecimal::from_f64(0.0).expect("0.0 is valid BigDecimal")))
+                .filter(
+                    sub_dsl::result.gt(BigDecimal::from_f64(0.0).expect("0.0 is valid BigDecimal")),
+                )
                 .order(sub_dsl::submitted_at.desc())
                 .select(selection)
                 .first::<LastSolutionResponse>(conn)
         }
-    }).await;
+    })
+    .await;
 
     match last_correct_result {
         Ok(solution) => {
@@ -1217,8 +1243,6 @@ pub async fn get_last_solution(
     }
 
     let last_any_result: Result<LastSolutionResponse, AppError> = helper::run_query(&pool, {
-        let player_id = player_id;
-        let exercise_id = exercise_id;
         move |conn| {
             sub_dsl::submissions
                 .filter(sub_dsl::player_id.eq(player_id))
@@ -1227,7 +1251,8 @@ pub async fn get_last_solution(
                 .select(selection)
                 .first::<LastSolutionResponse>(conn)
         }
-    }).await;
+    })
+    .await;
 
     match last_any_result {
         Ok(solution) => {
