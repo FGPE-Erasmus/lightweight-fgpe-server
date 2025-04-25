@@ -1,4 +1,4 @@
-use diesel::{QueryDsl, RunQueryDsl};
+use diesel::{QueryDsl, RunQueryDsl, PgConnection, SelectableHelper};
 use crate::errors::AppError;
 use tracing::log::{debug, error, info, warn};
 use crate::schema::{
@@ -10,258 +10,163 @@ use crate::schema::{
     course_ownership::dsl as course_owner_dsl
 };
 use diesel::ExpressionMethods;
+use deadpool_diesel::postgres::Pool;
+use diesel::dsl::exists;
 
 pub(super) async fn run_query<T, F>(
-    pool: &deadpool_diesel::postgres::Pool,
+    pool: &Pool,
     query: F,
 ) -> Result<T, AppError>
 where
-    F: FnOnce(&mut diesel::PgConnection) -> Result<T, diesel::result::Error> + Send + 'static,
+    F: FnOnce(&mut PgConnection) -> Result<T, diesel::result::Error> + Send + 'static,
     T: Send + 'static,
 {
-    let conn = pool.get().await.map_err(|pool_err| {
-        error!(
-            "Failed to get DB connection object from pool: {:?}",
-            pool_err
-        );
-        AppError::PoolError(pool_err)
-    })?;
+    let conn = pool.get().await?;
     debug!("DB connection object obtained from pool for interaction");
 
-    let res = conn.interact(query).await;
+    let result = conn.interact(query).await?;
 
-    match res {
-        Ok(Ok(result)) => Ok(result),
-        Ok(Err(diesel_err)) => {
-            error!("Diesel query failed within interaction: {:?}", diesel_err);
-            Err(AppError::DieselError(diesel_err))
-        }
-        Err(interact_err) => {
-            error!("Deadpool interact error: {:?}", interact_err);
-            Err(AppError::InteractError(interact_err))
+    result.map_err(AppError::from)
+}
+
+/// Checks if an instructor has permission for a specific entity.
+/// Distinguishes between the entity not existing (404) and permission being denied (403).
+/// Admin instructor (ID 0) gets access if the entity exists.
+async fn check_permission_generic<CheckExistence, CheckPermission>(
+    pool: &Pool,
+    instructor_id: i64,
+    entity_id: i64,
+    entity_name: &str,
+    existence_check: CheckExistence,
+    permission_check: CheckPermission,
+) -> Result<(), AppError>
+where
+    CheckExistence: FnOnce(i64, &mut PgConnection) -> Result<bool, diesel::result::Error> + Send + 'static,
+    CheckPermission: FnOnce(i64, i64, &mut PgConnection) -> Result<bool, diesel::result::Error> + Send + 'static,
+{
+    info!(
+        "Checking existence and permission for instructor_id: {} on {}_id: {}",
+        instructor_id, entity_name, entity_id
+    );
+
+    let entity_exists = run_query(pool, {
+        let entity_id_for_closure = entity_id;
+        move |conn| existence_check(entity_id_for_closure, conn)
+    }).await?;
+
+    if !entity_exists {
+        error!(
+            "Permission check failed: {} with ID {} not found.",
+            entity_name, entity_id
+        );
+        return Err(AppError::NotFound(format!(
+            "{} with ID {} not found.",
+            entity_name, entity_id
+        )));
+    }
+    info!("{} with ID {} confirmed to exist.", entity_name, entity_id);
+
+    if instructor_id == 0 {
+        info!("Admin permission granted for existing {}_id: {}", entity_name, entity_id);
+        Ok(())
+    } else {
+        info!("Non-admin instructor. Checking {} ownership/permission.", entity_name);
+        let has_permission = run_query(pool, {
+            let instructor_id_for_closure = instructor_id;
+            let entity_id_for_closure = entity_id;
+            move |conn| permission_check(instructor_id_for_closure, entity_id_for_closure, conn)
+        }).await?;
+
+        if has_permission {
+            info!(
+                "Permission granted via ownership for instructor_id: {} on {}_id: {}",
+                instructor_id, entity_name, entity_id
+            );
+            Ok(())
+        } else {
+            warn!(
+                "Permission denied for instructor_id: {} on existing {}_id: {}.",
+                instructor_id, entity_name, entity_id
+            );
+            Err(AppError::Forbidden(format!(
+                "Instructor {} does not have permission for {} {}.",
+                instructor_id, entity_name, entity_id
+            )))
         }
     }
 }
 
-/// Checks if an instructor has permission to access a specific game.
-///
-/// Permission is granted if:
-/// 1. The `instructor_id` is 0 (representing an admin user) AND the `game_id` exists.
-/// 2. A record exists in the `game_ownership` table linking the non-admin `instructor_id` and the `game_id`.
-///
-/// Returns `Ok(())` if permission is granted.
-/// Returns `Err(AppError::NotFound)` if permission is denied, or if the instructor/game
-/// relevant to the permission check does not exist.
-/// Returns other `AppError` variants for database pool or query errors.
-///
-/// # Arguments
-/// * `pool` - The database connection pool.
-/// * `instructor_id` - The ID of the instructor requesting access.
-/// * `game_id` - The ID of the game being accessed.
+
+/// Checks if an instructor has permission for a game.
+/// Returns Ok(()) if permission granted.
+/// Returns AppError::NotFound if the game doesn't exist.
+/// Returns AppError::Forbidden if the instructor lacks permission for an existing game.
+/// Returns AppError::InternalServerError for database issues.
 pub async fn check_instructor_game_permission(
-    pool: &deadpool_diesel::postgres::Pool,
+    pool: &Pool,
     instructor_id: i64,
     game_id: i64,
 ) -> Result<(), AppError> {
-    info!(
-        "Checking permission for instructor_id: {} on game_id: {}",
-        instructor_id, game_id
-    );
-
-    if instructor_id == 0 { // admin check
-        info!("Admin instructor (ID 0) detected. Checking game existence.");
-        let game_exists = run_query(pool, move |conn| {
-            diesel::select(diesel::dsl::exists(games_dsl::games.find(game_id)))
-                .get_result::<bool>(conn)
-        }).await?;
-
-        if game_exists {
-            info!("Admin permission granted for existing game_id: {}", game_id);
-            Ok(())
-        } else {
-            error!(
-                "Admin permission check failed: Game with ID {} not found.",
-                game_id
-            );
-            Err(AppError::NotFound(format!(
-                "Game with ID {} not found.",
-                game_id
-            )))
-        }
-    } else { // non admin check
-        info!("Non-admin instructor. Checking game_ownership table.");
-        let ownership_exists = run_query(pool, move |conn| {
-            diesel::select(diesel::dsl::exists(
-                go_dsl::game_ownership
-                    .filter(go_dsl::instructor_id.eq(instructor_id))
-                    .filter(go_dsl::game_id.eq(game_id)),
-            )).get_result::<bool>(conn)
-        }).await?;
-
-        if ownership_exists {
-            info!(
-                "Permission granted via game_ownership for instructor_id: {} on game_id: {}",
-                instructor_id, game_id
-            );
-            Ok(())
-        } else {
-            warn!(
-                "Permission denied for instructor_id: {}. No matching record in game_ownership for game_id: {}.",
-                instructor_id, game_id
-            );
-            Err(AppError::NotFound(format!(
-                "Instructor {} does not have permission for game {}, or one/both entities do not exist.",
-                instructor_id, game_id
-            )))
-        }
-    }
+    check_permission_generic(
+        pool,
+        instructor_id,
+        game_id,
+        "game",
+        |id, conn| diesel::select(exists(games_dsl::games.find(id))).get_result::<bool>(conn),
+        |instr_id, ent_id, conn| diesel::select(exists(
+            go_dsl::game_ownership
+                .filter(go_dsl::instructor_id.eq(instr_id))
+                .filter(go_dsl::game_id.eq(ent_id)),
+        )).get_result::<bool>(conn)
+    ).await
 }
 
-/// Checks if an instructor has permission to manage a specific group.
-///
-/// Permission is granted if:
-/// 1. The `instructor_id` is 0 (representing an admin user) AND the `group_id` exists.
-/// 2. A record exists in the `group_ownership` table linking the non-admin `instructor_id`
-///    and the `group_id` where `owner` is true.
-///
-/// Returns `Ok(())` if permission is granted.
-/// Returns `Err(AppError::NotFound)` if permission is denied, or if the instructor/group
-/// relevant to the permission check does not exist.
-/// Returns other `AppError` variants for database pool or query errors.
-///
-/// # Arguments
-/// * `pool` - The database connection pool.
-/// * `instructor_id` - The ID of the instructor requesting access.
-/// * `group_id` - The ID of the group being managed.
+/// Checks if an instructor has owner permission for a group.
+/// Returns Ok(()) if permission granted.
+/// Returns AppError::NotFound if the group doesn't exist.
+/// Returns AppError::Forbidden if the instructor lacks owner permission for an existing group.
+/// Returns AppError::InternalServerError for database issues.
 pub async fn check_instructor_group_permission(
-    pool: &deadpool_diesel::postgres::Pool,
+    pool: &Pool,
     instructor_id: i64,
     group_id: i64,
 ) -> Result<(), AppError> {
-    info!(
-        "Checking permission for instructor_id: {} on group_id: {}",
-        instructor_id, group_id
-    );
-
-    if instructor_id == 0 {
-        info!("Admin instructor (ID 0) detected. Checking group existence.");
-        let group_exists = run_query(pool, move |conn| {
-            diesel::select(diesel::dsl::exists(groups_dsl::groups.find(group_id)))
-                .get_result::<bool>(conn)
-        })
-            .await?;
-
-        if group_exists {
-            info!("Admin permission granted for existing group_id: {}", group_id);
-            Ok(())
-        } else {
-            error!(
-                "Admin permission check failed: Group with ID {} not found.",
-                group_id
-            );
-            Err(AppError::NotFound(format!(
-                "Group with ID {} not found.",
-                group_id
-            )))
-        }
-    } else {
-        info!("Non-admin instructor. Checking group_ownership table for ownership.");
-        let is_owner = run_query(pool, move |conn| {
-            diesel::select(diesel::dsl::exists(
-                group_owner_dsl::group_ownership
-                    .filter(group_owner_dsl::instructor_id.eq(instructor_id))
-                    .filter(group_owner_dsl::group_id.eq(group_id))
-                    .filter(group_owner_dsl::owner.eq(true)),
-            )).get_result::<bool>(conn)
-        }).await?;
-
-        if is_owner {
-            info!(
-                "Permission granted via group_ownership (owner=true) for instructor_id: {} on group_id: {}",
-                instructor_id, group_id
-            );
-            Ok(())
-        } else {
-            warn!(
-                "Permission denied for instructor_id: {}. Not an owner in group_ownership for group_id: {}.",
-                instructor_id, group_id
-            );
-            Err(AppError::NotFound(format!(
-                "Instructor {} does not have owner permission for group {}, or one/both entities do not exist.",
-                instructor_id, group_id
-            )))
-        }
-    }
+    check_permission_generic(
+        pool,
+        instructor_id,
+        group_id,
+        "group",
+        |id, conn| diesel::select(exists(groups_dsl::groups.find(id))).get_result::<bool>(conn),
+        |instr_id, ent_id, conn| diesel::select(exists(
+            group_owner_dsl::group_ownership
+                .filter(group_owner_dsl::instructor_id.eq(instr_id))
+                .filter(group_owner_dsl::group_id.eq(ent_id))
+                .filter(group_owner_dsl::owner.eq(true)),
+        )).get_result::<bool>(conn)
+    ).await
 }
 
-/// Checks if an instructor has owner permission for a specific course.
-///
-/// Permission is granted if:
-/// 1. The `instructor_id` is 0 (representing an admin user) AND the `course_id` exists.
-/// 2. A record exists in the `course_ownership` table linking the non-admin `instructor_id`
-///    and the `course_id` where `owner` is true.
-///
-/// Returns `Ok(())` if permission is granted.
-/// Returns `Err(AppError::NotFound)` if permission is denied, or if the instructor/course
-/// relevant to the permission check does not exist.
-/// Returns other `AppError` variants for database pool or query errors.
+/// Checks if an instructor has owner permission for a course.
+/// Returns Ok(()) if permission granted.
+/// Returns AppError::NotFound if the course doesn't exist.
+/// Returns AppError::Forbidden if the instructor lacks owner permission for an existing course.
+/// Returns AppError::InternalServerError for database issues.
 pub async fn check_instructor_course_permission(
-    pool: &deadpool_diesel::postgres::Pool,
+    pool: &Pool,
     instructor_id: i64,
     course_id: i64,
 ) -> Result<(), AppError> {
-    info!(
-        "Checking owner permission for instructor_id: {} on course_id: {}",
-        instructor_id, course_id
-    );
-
-    if instructor_id == 0 {
-        info!("Admin instructor (ID 0) detected. Checking course existence.");
-        let course_exists = run_query(pool, move |conn| {
-            diesel::select(diesel::dsl::exists(courses_dsl::courses.find(course_id)))
-                .get_result::<bool>(conn)
-        }).await?;
-
-        if course_exists {
-            info!("Admin permission granted for existing course_id: {}", course_id);
-            Ok(())
-        } else {
-            error!(
-                "Admin permission check failed: Course with ID {} not found.",
-                course_id
-            );
-            Err(AppError::NotFound(format!(
-                "Course with ID {} not found.",
-                course_id
-            )))
-        }
-    } else {
-        info!("Non-admin instructor. Checking course_ownership table for ownership.");
-        let is_owner = run_query(pool, move |conn| {
-            diesel::select(diesel::dsl::exists(
-                course_owner_dsl::course_ownership
-                    .filter(course_owner_dsl::instructor_id.eq(instructor_id))
-                    .filter(course_owner_dsl::course_id.eq(course_id))
-                    .filter(course_owner_dsl::owner.eq(true)),
-            ))
-                .get_result::<bool>(conn)
-        }).await?;
-
-        if is_owner {
-            info!(
-                "Permission granted via course_ownership (owner=true) for instructor_id: {} on course_id: {}",
-                instructor_id, course_id
-            );
-            Ok(())
-        } else {
-            warn!(
-                "Permission denied for instructor_id: {}. Not an owner in course_ownership for course_id: {}.",
-                instructor_id, course_id
-            );
-            Err(AppError::NotFound(format!(
-                "Instructor {} does not have owner permission for course {}, or one/both entities do not exist.",
-                instructor_id, course_id
-            )))
-        }
-    }
+    check_permission_generic(
+        pool,
+        instructor_id,
+        course_id,
+        "course",
+        |id, conn| diesel::select(exists(courses_dsl::courses.find(id))).get_result::<bool>(conn),
+        |instr_id, ent_id, conn| diesel::select(exists(
+            course_owner_dsl::course_ownership
+                .filter(course_owner_dsl::instructor_id.eq(instr_id))
+                .filter(course_owner_dsl::course_id.eq(ent_id))
+                .filter(course_owner_dsl::owner.eq(true)),
+        )).get_result::<bool>(conn)
+    ).await
 }

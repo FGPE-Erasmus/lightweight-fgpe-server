@@ -7,7 +7,7 @@ use chrono::{DateTime, Duration, Utc};
 use deadpool_diesel::postgres::Pool;
 use diesel::dsl::exists;
 use diesel::{Connection, ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
-use diesel::result::DatabaseErrorKind;
+use diesel::result::Error as DieselError;
 use tracing::instrument;
 use tracing::log::{debug, error, info, warn};
 use crate::errors::AppError;
@@ -22,23 +22,21 @@ use crate::{
         instructors::dsl as instructors_dsl,
     },
 };
-use crate::errors::AppError::DieselError;
 use crate::model::editor::{CourseQueryResult, ExerciseQueryResult, ExportCourseResponse, ExportExerciseResponse, ExportModuleResponse, ModuleQueryResult, NewCourse, NewCourseOwnership, NewExercise, NewModule};
 
 /// Imports a complete course structure from JSON data.
 ///
 /// Creates course, modules, and exercises based on the provided payload.
 /// Assigns ownership of the new course to the requesting instructor.
-/// Requires the requesting instructor to exist. Admin privileges are NOT strictly
-/// required by this implementation, but could be added.
+/// Requires the requesting instructor to exist.
 /// Performs all database operations within a single transaction.
 ///
 /// Request Body: `ImportCoursePayload`
 ///
 /// Returns (wrapped in `ApiResponse`)
-/// * `bool`: true if the course was successfully imported (200).
-/// * `None`: If requesting instructor not found (404).
-/// * `None`: If a database error (e.g., constraint violation) or transaction failure occurs (500).
+/// * `bool`: true if the course was successfully imported (200 OK).
+/// * `404 Not Found`: If the requesting instructor specified in the payload does not exist.
+/// * `500 Internal Server Error`: If a database error (pool, interaction, query) or transaction failure occurs.
 #[instrument(skip(pool, payload))]
 pub async fn import_course(
     State(pool): State<Pool>,
@@ -73,7 +71,7 @@ pub async fn import_course(
     }
     info!("Requesting instructor {} confirmed to exist.", instructor_id);
 
-    let conn = pool.get().await.map_err(AppError::PoolError)?;
+    let conn = pool.get().await?;
     let import_result = conn
         .interact(move |conn_sync| {
             conn_sync.transaction(|tx_conn| {
@@ -149,30 +147,26 @@ pub async fn import_course(
                     }
                     info!("Inserted exercises for module ID {}", new_module_id);
                 }
-
-                Ok(())
+                Ok::<(), DieselError>(())
             })
         })
-        .await;
+        .await?;
 
     match import_result {
-        Ok(Ok(())) => {
+        Ok(()) => {
             info!(
                 "Successfully imported course '{}' for instructor {}",
                 course_title, instructor_id
             );
             Ok(ApiResponse::ok(true))
         }
-        Ok(Err(diesel_err)) => {
+        Err(diesel_err) => {
             error!("Course import transaction failed: {:?}", diesel_err);
-            Err(AppError::DieselError(diesel_err))
-        }
-        Err(interact_err) => {
-            error!("Interaction error during course import: {:?}", interact_err);
-            Err(AppError::InteractError(interact_err))
+            Err(AppError::from(diesel_err))
         }
     }
 }
+
 
 /// Exports the full structure of a course (details, modules, exercises) as JSON.
 ///
@@ -184,9 +178,10 @@ pub async fn import_course(
 /// * course_id as `i64`: The ID of the course to export.
 ///
 /// Returns (wrapped in `ApiResponse`)
-/// * `ExportCourseResponse`: The structured course data (200).
-/// * `None`: If instructor lacks permission, or the course doesn't exist (404).
-/// * `None`: If a database error occurs during data fetching (500).
+/// * `ExportCourseResponse`: The structured course data (200 OK).
+/// * `403 Forbidden`: If the requesting instructor does not have ownership permission for the specified course.
+/// * `404 Not Found`: If the specified course does not exist.
+/// * `500 Internal Server Error`: If a database error (pool, interaction, query) occurs during permission checks or data fetching.
 #[instrument(skip(pool, params))]
 pub async fn export_course(
     State(pool): State<Pool>,
@@ -208,7 +203,6 @@ pub async fn export_course(
     );
 
     let course_details = super::helper::run_query(&pool, {
-        let course_id = course_id;
         move |conn| {
             courses_dsl::courses
                 .find(course_id)
@@ -221,7 +215,6 @@ pub async fn export_course(
                     courses_dsl::gamification_rule_conditions,
                     courses_dsl::gamification_complex_rules,
                     courses_dsl::gamification_rule_results,
-                    // courses_dsl::public, // Excluded from CourseQueryResult
                 ))
                 .first::<CourseQueryResult>(conn)
         }
@@ -229,7 +222,6 @@ pub async fn export_course(
         .await?;
 
     let modules_db = super::helper::run_query(&pool, {
-        let course_id = course_id;
         move |conn| {
             modules_dsl::modules
                 .filter(modules_dsl::course_id.eq(course_id))
@@ -264,9 +256,6 @@ pub async fn export_course(
                         exercises_dsl::mode,
                         exercises_dsl::mode_parameters,
                         exercises_dsl::difficulty,
-                        // exercises_dsl::version, // Excluded from ExerciseQueryResult
-                        // exercises_dsl::created_at, // Excluded
-                        // exercises_dsl::updated_at, // Excluded
                     ))
                     .order_by((exercises_dsl::module_id, exercises_dsl::order.asc()))
                     .load::<ExerciseQueryResult>(conn)
