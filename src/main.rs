@@ -126,13 +126,24 @@ fn teacher_routes(keycloak_layer: KeycloakAuthLayer<String>) -> Router<Pool> {
         // public routes go here
 }
 
+fn editor_routes(keycloak_layer: KeycloakAuthLayer<String>) -> Router<Pool> {
+    Router::new()
+        // protected routes go here
+        .route("/import_course", post(api::editor::import_course))
+        .route("/export_course", get(api::editor::export_course))
+        .layer(keycloak_layer)
+        // public routes go here
+}
+
 fn init_router(pool: Pool, keycloak_layer: KeycloakAuthLayer<String>) -> Router {
     let student_api = student_routes(keycloak_layer.clone());
-    let teacher_api = teacher_routes(keycloak_layer);
+    let teacher_api = teacher_routes(keycloak_layer.clone());
+    let editor_api = editor_routes(keycloak_layer);
 
     Router::new()
         .nest("/student", student_api)
         .nest("/teacher", teacher_api)
+        .nest("/editor", editor_api)
         .with_state(pool)
 }
 
