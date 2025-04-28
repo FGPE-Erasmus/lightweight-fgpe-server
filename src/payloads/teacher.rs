@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Deserialize, Debug)]
 pub struct GetInstructorGamesParams {
@@ -189,4 +190,17 @@ pub struct DisablePlayerPayload {
 pub struct DeletePlayerPayload {
     pub instructor_id: i64,
     pub player_id: i64,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct GenerateInviteLinkPayload {
+    pub instructor_id: i64,
+    pub game_id: Option<i64>,
+    pub group_id: Option<i64>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ProcessInviteLinkPayload {
+    pub player_id: i64,
+    pub uuid: Uuid,
 }

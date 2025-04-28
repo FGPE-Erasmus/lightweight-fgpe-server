@@ -6,7 +6,7 @@ use std::vec::Vec;
 
 #[derive(Deserialize, Debug)]
 pub struct ImportExerciseData {
-    pub version: BigDecimal,
+    pub _version: BigDecimal,
     pub order: i32,
     pub title: String,
     #[serde(default)]

@@ -9,9 +9,11 @@ use tracing::error;
 
 #[derive(Debug, Error)]
 pub enum AppError {
+    #[allow(dead_code)]
     #[error("Bad Request: {0}")]
     BadRequest(String), // 400
 
+    #[allow(dead_code)]
     #[error("Unauthorized: {0}")]
     Unauthorized(String), // 401
 

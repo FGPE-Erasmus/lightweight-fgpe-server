@@ -2,6 +2,7 @@ use crate::schema::game_ownership;
 use crate::schema::games;
 use crate::schema::group_ownership;
 use crate::schema::groups;
+use crate::schema::invites;
 use crate::schema::player_groups;
 use crate::schema::players;
 use bigdecimal::BigDecimal;
@@ -9,6 +10,7 @@ use chrono::{DateTime, Utc};
 use diesel::{AsChangeset, Insertable, Queryable};
 use serde::Serialize;
 use serde_json::Value as JsonValue;
+use uuid::Uuid;
 
 #[derive(Insertable, Debug)]
 #[diesel(table_name = games)]
@@ -132,4 +134,18 @@ pub struct ExerciseStatsResponse {
     pub successful_attempts: i64,
     pub difficulty: f64,
     pub solved_percentage: f64,
+}
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = invites)]
+pub struct NewInvite {
+    pub uuid: Uuid,
+    pub instructor_id: i64,
+    pub game_id: Option<i64>,
+    pub group_id: Option<i64>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct InviteLinkResponse {
+    pub invite_uuid: Uuid,
 }

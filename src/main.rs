@@ -164,6 +164,14 @@ fn teacher_routes(keycloak_layer: KeycloakAuthLayer<String>) -> Router<Pool> {
         .route("/create_player", post(api::teacher::create_player))
         .route("/disable_player", post(api::teacher::disable_player))
         .route("/delete_player", post(api::teacher::delete_player))
+        .route(
+            "/generate_invite_link",
+            post(api::teacher::generate_invite_link),
+        )
+        .route(
+            "/process_invite_link",
+            post(api::teacher::process_invite_link),
+        )
         .layer(keycloak_layer)
     // public routes go here
 }

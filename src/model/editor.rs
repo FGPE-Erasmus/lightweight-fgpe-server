@@ -114,7 +114,7 @@ pub struct ExportCourseResponse {
 
 #[derive(Queryable, Debug)]
 pub struct CourseQueryResult {
-    pub id: i64,
+    pub _id: i64,
     pub title: String,
     pub description: String,
     pub languages: String,
@@ -128,7 +128,7 @@ pub struct CourseQueryResult {
 #[derive(Queryable, Debug, Clone)]
 pub struct ModuleQueryResult {
     pub id: i64,
-    pub course_id: i64,
+    pub _course_id: i64,
     pub order: i32,
     pub title: String,
     pub description: String,
@@ -139,7 +139,7 @@ pub struct ModuleQueryResult {
 
 #[derive(Queryable, Debug, Clone)]
 pub struct ExerciseQueryResult {
-    pub id: i64,
+    pub _id: i64,
     pub module_id: i64,
     pub order: i32,
     pub title: String,
