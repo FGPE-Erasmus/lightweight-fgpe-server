@@ -115,6 +115,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    invites (id) {
+        id -> Int8,
+        uuid -> Uuid,
+        instructor_id -> Int8,
+        game_id -> Nullable<Int8>,
+        group_id -> Nullable<Int8>,
+    }
+}
+
+diesel::table! {
     modules (id) {
         id -> Int8,
         course_id -> Int8,
@@ -230,6 +240,9 @@ diesel::joinable!(game_ownership -> instructors (instructor_id));
 diesel::joinable!(games -> courses (course_id));
 diesel::joinable!(group_ownership -> groups (group_id));
 diesel::joinable!(group_ownership -> instructors (instructor_id));
+diesel::joinable!(invites -> games (game_id));
+diesel::joinable!(invites -> groups (group_id));
+diesel::joinable!(invites -> instructors (instructor_id));
 diesel::joinable!(modules -> courses (course_id));
 diesel::joinable!(player_groups -> groups (group_id));
 diesel::joinable!(player_groups -> players (player_id));
@@ -254,6 +267,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     group_ownership,
     groups,
     instructors,
+    invites,
     modules,
     player_groups,
     player_registrations,

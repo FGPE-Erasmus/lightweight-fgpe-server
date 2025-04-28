@@ -6,14 +6,14 @@ authors = ["Wiktor Przetacznik <wiktorprzetacznik@outlook.com>"]
 description = "A lightweight, fast and reliable FGPE backend providing connection between database and clients."
 
 [dependencies]
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 axum = "0.8.3"
 axum-keycloak-auth = "0.8.2"
 bigdecimal = { version = "0.4.8", features = ["serde"] }
 chrono = { version = "0.4.40", features = ["serde"] }
-clap = {  version = "4.5.36", features = ["derive", "env"] }
+clap = {  version = "4.5.37", features = ["derive", "env"] }
 deadpool-diesel = { version = "0.6.1", features = ["postgres"] }
-diesel = { version = "2.2.9", features = ["chrono", "postgres", "serde_json", "numeric"] }
+diesel = { version = "2.2.10", features = ["chrono", "numeric", "postgres", "serde_json", "uuid"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 thiserror = "2.0.12"
@@ -21,3 +21,4 @@ tokio = { version = "1.44.2", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 url = "2.5.4"
+uuid = "1.16.0"
