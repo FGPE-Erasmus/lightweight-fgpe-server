@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Deserialize, Debug)]
@@ -66,7 +66,7 @@ pub struct GetExerciseSubmissionsParams {
     pub success_only: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct CreateGamePayload {
     pub instructor_id: i64,
     pub title: String,
@@ -85,7 +85,7 @@ pub struct CreateGamePayload {
     // start_date and end_date are not in payload, will be defaulted
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ModifyGamePayload {
     pub instructor_id: i64,
     pub game_id: i64,
@@ -98,7 +98,7 @@ pub struct ModifyGamePayload {
     pub exercise_lock: Option<bool>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct AddGameInstructorPayload {
     pub requesting_instructor_id: i64,
     pub game_id: i64,
@@ -107,38 +107,38 @@ pub struct AddGameInstructorPayload {
     pub is_owner: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct RemoveGameInstructorPayload {
     pub requesting_instructor_id: i64,
     pub game_id: i64,
     pub instructor_to_remove_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ActivateGamePayload {
     pub instructor_id: i64,
     pub game_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct StopGamePayload {
     pub instructor_id: i64,
     pub game_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct RemoveGameStudentPayload {
     pub instructor_id: i64,
     pub game_id: i64,
     pub student_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct TranslateEmailParams {
     pub email: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct CreateGroupPayload {
     pub instructor_id: i64,
     pub display_name: String,
@@ -147,27 +147,27 @@ pub struct CreateGroupPayload {
     pub member_list: Vec<i64>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct DissolveGroupPayload {
     pub instructor_id: i64,
     pub group_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct AddGroupMemberPayload {
     pub instructor_id: i64,
     pub group_id: i64,
     pub player_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct RemoveGroupMemberPayload {
     pub instructor_id: i64,
     pub group_id: i64,
     pub player_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct CreatePlayerPayload {
     pub instructor_id: i64,
     pub email: String,
@@ -180,26 +180,26 @@ pub struct CreatePlayerPayload {
     pub language: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct DisablePlayerPayload {
     pub instructor_id: i64,
     pub player_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct DeletePlayerPayload {
     pub instructor_id: i64,
     pub player_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct GenerateInviteLinkPayload {
     pub instructor_id: i64,
     pub game_id: Option<i64>,
     pub group_id: Option<i64>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ProcessInviteLinkPayload {
     pub player_id: i64,
     pub uuid: Uuid,

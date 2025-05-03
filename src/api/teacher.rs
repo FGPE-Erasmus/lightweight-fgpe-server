@@ -3,9 +3,10 @@ use anyhow::anyhow;
 
 use crate::model::student::NewPlayerRegistration;
 use crate::model::teacher::{
-    ExerciseStatsResponse, GameChangeset, InstructorGameMetadataResponse, InviteLinkResponse,
-    NewGame, NewGameOwnership, NewGroup, NewGroupOwnership, NewInvite, NewPlayer, NewPlayerGroup,
-    StudentExercisesResponse, StudentProgressResponse, SubmissionDataResponse,
+    ExerciseStatsResponse, GameChangeset, InstructorGameMetadataResponse, Invite,
+    InviteLinkResponse, NewGame, NewGameOwnership, NewGroup, NewGroupOwnership, NewInvite,
+    NewPlayer, NewPlayerGroup, StudentExercisesResponse, StudentProgressResponse,
+    SubmissionDataResponse,
 };
 use crate::payloads::teacher::{
     ActivateGamePayload, AddGameInstructorPayload, AddGroupMemberPayload, CreateGamePayload,
@@ -36,7 +37,7 @@ use axum::{
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Duration, Utc};
 use deadpool_diesel::postgres::Pool;
-use diesel::dsl::exists;
+use diesel::dsl::{exists, select};
 use diesel::prelude::*;
 use diesel::result::{DatabaseErrorKind, Error as DieselError};
 use serde_json::json;
@@ -1162,9 +1163,10 @@ pub async fn add_game_instructor(
     );
     debug!("Add game instructor payload: {:?}", payload);
 
-    helper::check_instructor_game_permission(&pool, requesting_instructor_id, game_id).await?;
+    helper::check_instructor_game_owner_permission(&pool, requesting_instructor_id, game_id)
+        .await?;
     info!(
-        "Permission check passed for instructor {} on game {}",
+        "Owner permission check passed for instructor {} on game {}",
         requesting_instructor_id, game_id
     );
 
@@ -1265,9 +1267,10 @@ pub async fn remove_game_instructor(
     );
     debug!("Remove game instructor payload: {:?}", payload);
 
-    helper::check_instructor_game_permission(&pool, requesting_instructor_id, game_id).await?;
+    helper::check_instructor_game_owner_permission(&pool, requesting_instructor_id, game_id)
+        .await?;
     info!(
-        "Permission check passed for instructor {} on game {}",
+        "Owner permission check passed for instructor {} on game {}",
         requesting_instructor_id, game_id
     );
 
@@ -2493,167 +2496,143 @@ pub async fn generate_invite_link(
 /// Processes an invite link for a specific player.
 ///
 /// Finds the invite by UUID, validates the player exists, adds the player
-/// to the associated game and/or group (if specified in the invite and not already present),
-/// and finally deletes the invite record to prevent reuse.
-/// All operations occur within a single transaction.
+/// to the associated game and/or group (if specified in the invite and not already present).
 ///
 /// Request Body: `ProcessInviteLinkPayload`
 ///
 /// Returns (wrapped in `ApiResponse`)
 /// * `bool`: true if the invite was successfully processed (200 OK).
-/// * `404 Not Found`: If the invite UUID, player ID, or associated game/group ID is invalid.
-/// * `500 Internal Server Error`: If a database error or transaction failure occurs.
+/// * `404 Not Found`: If the invite UUID, player ID, or associated game/group ID (at time of use) is invalid.
+/// * `500 Internal Server Error`: If a database error occurs.
 #[instrument(skip(pool, payload))]
 pub async fn process_invite_link(
     State(pool): State<Pool>,
     Json(payload): Json<ProcessInviteLinkPayload>,
 ) -> Result<ApiResponse<bool>, AppError> {
     let player_id = payload.player_id;
-    let uuid = payload.uuid;
+    let invite_uuid = payload.uuid;
+    info!(player_id, %invite_uuid, "[Handler] Received request to process invite link");
 
-    info!(
-        "Attempting to process invite link {} for player {}",
-        uuid, player_id
-    );
-    debug!("Process invite link payload: {:?}", payload);
-
-    #[derive(Queryable, Debug)]
-    #[diesel(table_name = invites_dsl::invites)]
-    struct InviteQueryResult {
-        id: i64,
-        _instructor_id: i64,
-        game_id: Option<i64>,
-        group_id: Option<i64>,
-    }
-
-    let conn = pool.get().await?;
-    let transaction_result: Result<(), AppError> = conn.interact(move |conn_sync| {
-        conn_sync.transaction(|tx_conn| {
-            let invite = invites_dsl::invites
-                .filter(invites_dsl::uuid.eq(uuid))
-                .select((
-                    invites_dsl::id,
-                    invites_dsl::instructor_id,
-                    invites_dsl::game_id,
-                    invites_dsl::group_id,
-                ))
-                .first::<InviteQueryResult>(tx_conn)
-                .map_err(|e| match e {
-                    DieselError::NotFound => {
-                        warn!("Invite link with UUID {} not found.", uuid);
-                        AppError::NotFound(format!("Invite link {} not found.", uuid))
-                    }
-                    _ => {
-                        error!("Database error finding invite {}: {:?}", uuid, e);
-                        AppError::from(e)
-                    }
-                })?;
-            info!("Found invite record ID {} for UUID {}", invite.id, uuid);
-
-            let player_exists = diesel::select(exists(players_dsl::players.find(player_id)))
-                .get_result::<bool>(tx_conn)
-                .map_err(|e| {
-                    error!("Database error checking player {}: {:?}", player_id, e);
-                    AppError::from(e)
-                })?;
-
-            if !player_exists {
-                warn!("Player with ID {} specified in payload not found.", player_id);
-                return Err(AppError::NotFound(format!(
-                    "Player with ID {} not found.",
-                    player_id
-                )));
-            }
-            info!("Player {} confirmed to exist.", player_id);
-
-            if let Some(game_id) = invite.game_id {
-                info!("Invite includes game ID {}. Checking registration for player {}.", game_id, player_id);
-                let is_registered = diesel::select(exists(
-                    pr_dsl::player_registrations
-                        .filter(pr_dsl::player_id.eq(player_id))
-                        .filter(pr_dsl::game_id.eq(game_id)),
-                ))
-                    .get_result::<bool>(tx_conn)
+    pool
+        .get()
+        .await?
+        .interact(move |conn| {
+            info!("[Handler] Starting database transaction");
+            conn.transaction::<_, DieselError, _>(|tx_conn| {
+                info!(uuid = %invite_uuid, "[Handler Tx] Attempting to find invite by UUID");
+                let invite = invites_dsl::invites
+                    .filter(invites_dsl::uuid.eq(invite_uuid))
+                    .get_result::<Invite>(tx_conn)
                     .map_err(|e| {
-                        error!("DB error checking registration for player {} game {}: {:?}", player_id, game_id, e);
-                        AppError::from(e)
+                        error!(uuid = %invite_uuid, error = %e, "[Handler Tx] Invite UUID query failed");
+                        if matches!(e, DieselError::NotFound) {
+                            DieselError::NotFound
+                        } else {
+                            e
+                        }
                     })?;
+                info!(invite_id = invite.id, "[Handler Tx] Invite found");
 
-                if !is_registered {
-                    info!("Player {} not registered in game {}. Adding registration.", player_id, game_id);
-                    let new_registration = NewPlayerRegistration {
-                        player_id,
-                        game_id,
-                        language: "en".to_string(),
-                        progress: 0,
-                        game_state: json!({}),
-                    };
-                    diesel::insert_into(pr_dsl::player_registrations)
-                        .values(&new_registration)
-                        .execute(tx_conn)
-                        .map_err(|e| {
-                            if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) = e {
-                                error!("FK violation adding player {} to game {}. Game likely deleted.", player_id, game_id);
-                                AppError::NotFound(format!("Game with ID {} not found during registration.", game_id))
-                            } else {
-                                error!("DB error inserting registration for player {} game {}: {:?}", player_id, game_id, e);
-                                AppError::from(e)
-                            }
-                        })?;
-                    info!("Successfully registered player {} in game {}.", player_id, game_id);
-                } else {
-                    info!("Player {} already registered in game {}. Skipping registration.", player_id, game_id);
-                }
-            }
-
-            if let Some(group_id) = invite.group_id {
-                info!("Invite includes group ID {}. Checking membership for player {}.", group_id, player_id);
-                let is_member = diesel::select(exists(
-                    pg_dsl::player_groups
-                        .filter(pg_dsl::player_id.eq(player_id))
-                        .filter(pg_dsl::group_id.eq(group_id)),
+                debug!(player_id, "[Handler Tx] Validating player existence and status");
+                let player_exists: bool = select(exists(
+                    players_dsl::players
+                        .filter(players_dsl::id.eq(player_id))
+                        .filter(players_dsl::disabled.eq(false)),
                 ))
-                    .get_result::<bool>(tx_conn)
-                    .map_err(|e| {
-                        error!("DB error checking membership for player {} group {}: {:?}", player_id, group_id, e);
-                        AppError::from(e)
-                    })?;
+                    .get_result(tx_conn)?;
 
-                if !is_member {
-                    info!("Player {} not a member of group {}. Adding membership.", player_id, group_id);
-                    let new_membership = NewPlayerGroup { player_id, group_id };
-                    diesel::insert_into(pg_dsl::player_groups)
-                        .values(&new_membership)
-                        .on_conflict((pg_dsl::player_id, pg_dsl::group_id))
-                        .do_nothing()
-                        .execute(tx_conn)
-                        .map_err(|e| {
-                            if let DieselError::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) = e {
-                                error!("FK violation adding player {} to group {}. Group likely deleted.", player_id, group_id);
-                                AppError::NotFound(format!("Group with ID {} not found during membership add.", group_id))
-                            } else {
-                                error!("DB error inserting membership for player {} group {}: {:?}", player_id, group_id, e);
-                                AppError::from(e)
-                            }
-                        })?;
-                    info!("Successfully added player {} to group {}.", player_id, group_id);
-                } else {
-                    info!("Player {} already a member of group {}. Skipping membership add.", player_id, group_id);
+                if !player_exists {
+                    error!(player_id, "[Handler Tx] Player not found or is disabled");
+                    return Err(DieselError::NotFound);
                 }
-            }
+                debug!(player_id, "[Handler Tx] Player validation successful");
 
-            Ok(())
+                let target_game_id = invite.game_id;
+                let target_group_id = invite.group_id;
+
+                if let Some(game_id) = target_game_id {
+                    info!(game_id, "[Handler Tx] Checking existence of associated game");
+                    let game_exists: bool = select(exists(games_dsl::games.find(game_id)))
+                        .get_result(tx_conn)?;
+                    if !game_exists {
+                        error!(game_id, "[Handler Tx] Associated game determined NOT FOUND during pre-check");
+                        return Err(DieselError::NotFound);
+                    }
+                    info!(game_id, "[Handler Tx] Associated game determined FOUND during pre-check");
+                }
+                if let Some(group_id) = target_group_id {
+                    info!(group_id, "[Handler Tx] Checking existence of associated group");
+                    let group_exists: bool = select(exists(groups_dsl::groups.find(group_id)))
+                        .get_result(tx_conn)?;
+                    if !group_exists {
+                        error!(group_id, "[Handler Tx] Associated group determined NOT FOUND during pre-check");
+                        return Err(DieselError::NotFound);
+                    }
+                    info!(group_id, "[Handler Tx] Associated group determined FOUND during pre-check");
+                }
+
+                if let Some(game_id) = target_game_id {
+                    info!(game_id, player_id, "[Handler Tx] Processing game association for invite");
+                    let already_registered: bool = select(exists(
+                        pr_dsl::player_registrations
+                            .filter(pr_dsl::player_id.eq(player_id))
+                            .filter(pr_dsl::game_id.eq(game_id))
+                            .filter(pr_dsl::left_at.is_null()),
+                    ))
+                        .get_result(tx_conn)?;
+
+                    if !already_registered {
+                        info!(player_id, game_id, "[Handler Tx] Player not registered in game, adding registration");
+                        let new_registration = NewPlayerRegistration {
+                            player_id,
+                            game_id,
+                            language: "en".to_string(),
+                            progress: 0,
+                            game_state: json!({}),
+                        };
+                        diesel::insert_into(pr_dsl::player_registrations)
+                            .values(&new_registration)
+                            .execute(tx_conn)?;
+                        info!(player_id, game_id, "[Handler Tx] Player successfully registered in game");
+                    } else {
+                        info!(player_id, game_id, "[Handler Tx] Player already registered in game, skipping registration");
+                    }
+                }
+
+                if let Some(group_id) = target_group_id {
+                    info!(group_id, player_id, "[Handler Tx] Processing group association for invite");
+                    let already_member: bool = select(exists(
+                        pg_dsl::player_groups
+                            .filter(pg_dsl::player_id.eq(player_id))
+                            .filter(pg_dsl::group_id.eq(group_id))
+                            .filter(pg_dsl::left_at.is_null()),
+                    ))
+                        .get_result(tx_conn)?;
+
+                    if !already_member {
+                        info!(player_id, group_id, "[Handler Tx] Player not member of group, adding membership");
+                        let new_player_group = NewPlayerGroup {
+                            player_id,
+                            group_id,
+                        };
+                        diesel::insert_into(pg_dsl::player_groups)
+                            .values(&new_player_group)
+                            .on_conflict((pg_dsl::player_id, pg_dsl::group_id))
+                            .do_update()
+                            .set(pg_dsl::left_at.eq(None::<chrono::NaiveDateTime>))
+                            .execute(tx_conn)?;
+                        info!(player_id, group_id, "[Handler Tx] Player successfully added to group");
+                    } else {
+                        info!(player_id, group_id, "[Handler Tx] Player already member of group, skipping membership update");
+                    }
+                }
+
+                info!(uuid = %invite_uuid, player_id, "[Handler Tx] Invite processing completed successfully within transaction");
+                Ok(())
+            })
         })
-    }).await?;
+        .await??;
 
-    match transaction_result {
-        Ok(()) => {
-            info!(
-                "Successfully processed invite link {} for player {}",
-                uuid, player_id
-            );
-            Ok(ApiResponse::ok(true))
-        }
-        Err(e) => Err(e),
-    }
+    info!(player_id, %invite_uuid, "[Handler] Invite processed successfully, returning 200 OK");
+    Ok(ApiResponse::ok(true))
 }

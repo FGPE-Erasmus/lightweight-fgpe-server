@@ -2,13 +2,14 @@ use crate::schema::game_ownership;
 use crate::schema::games;
 use crate::schema::group_ownership;
 use crate::schema::groups;
+use crate::schema::instructors;
 use crate::schema::invites;
 use crate::schema::player_groups;
 use crate::schema::players;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use diesel::{AsChangeset, Insertable, Queryable};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
@@ -72,6 +73,14 @@ pub struct NewPlayer {
     // disabled defaults to false in DB
 }
 
+#[derive(Insertable)]
+#[diesel(table_name = instructors)]
+pub struct NewInstructor {
+    pub id: i64,
+    pub email: String,
+    pub display_name: String,
+}
+
 #[derive(AsChangeset, Debug, Default)]
 #[diesel(table_name = games)]
 pub struct GameChangeset {
@@ -84,7 +93,7 @@ pub struct GameChangeset {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct InstructorGameMetadataResponse {
     pub title: String,
     pub description: String,
@@ -97,20 +106,20 @@ pub struct InstructorGameMetadataResponse {
     pub player_count: i64,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct StudentProgressResponse {
     pub attempts: i64,
     pub solved_exercises: i64,
     pub progress: f64,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct StudentExercisesResponse {
     pub attempted_exercises: Vec<i64>,
     pub solved_exercises: Vec<i64>,
 }
 
-#[derive(Serialize, Debug, Queryable)]
+#[derive(Deserialize, Serialize, Debug, Queryable)]
 pub struct SubmissionDataResponse {
     pub id: i64,
     pub exercise_id: i64,
@@ -128,7 +137,7 @@ pub struct SubmissionDataResponse {
     pub submitted_at: DateTime<Utc>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ExerciseStatsResponse {
     pub attempts: i64,
     pub successful_attempts: i64,
@@ -145,7 +154,17 @@ pub struct NewInvite {
     pub group_id: Option<i64>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct InviteLinkResponse {
     pub invite_uuid: Uuid,
+}
+
+#[derive(Queryable, Debug)]
+#[diesel(table_name = invites_dsl::invites)]
+pub struct Invite {
+    pub id: i64,
+    pub uuid: Uuid,
+    pub instructor_id: i64,
+    pub game_id: Option<i64>,
+    pub group_id: Option<i64>,
 }

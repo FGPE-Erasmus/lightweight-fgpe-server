@@ -128,6 +128,34 @@ pub async fn check_instructor_game_permission(
     .await
 }
 
+/// Checks if an instructor has OWNER permission for a game.
+/// Returns Ok(()) if owner permission granted (or admin).
+/// Returns AppError::NotFound if the game doesn't exist.
+/// Returns AppError::Forbidden if the instructor lacks owner permission for an existing game.
+pub async fn check_instructor_game_owner_permission(
+    pool: &Pool,
+    instructor_id: i64,
+    game_id: i64,
+) -> Result<(), AppError> {
+    check_permission_generic(
+        pool,
+        instructor_id,
+        game_id,
+        "game",
+        |id, conn| diesel::select(exists(games_dsl::games.find(id))).get_result::<bool>(conn),
+        |instr_id, ent_id, conn| {
+            diesel::select(exists(
+                go_dsl::game_ownership
+                    .filter(go_dsl::instructor_id.eq(instr_id))
+                    .filter(go_dsl::game_id.eq(ent_id))
+                    .filter(go_dsl::owner.eq(true)),
+            ))
+            .get_result::<bool>(conn)
+        },
+    )
+    .await
+}
+
 /// Checks if an instructor has owner permission for a group.
 /// Returns Ok(()) if permission granted.
 /// Returns AppError::NotFound if the group doesn't exist.

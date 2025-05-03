@@ -1,3 +1,3 @@
-pub(crate) mod editor;
-pub(crate) mod student;
-pub(crate) mod teacher;
+pub mod editor;
+pub mod student;
+pub mod teacher;
