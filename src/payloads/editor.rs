@@ -1,10 +1,10 @@
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::vec::Vec;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ImportExerciseData {
     pub _version: BigDecimal,
     pub order: i32,
@@ -33,7 +33,7 @@ pub struct ImportExerciseData {
     pub difficulty: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ImportModuleData {
     pub order: i32,
     pub title: String,
@@ -46,7 +46,7 @@ pub struct ImportModuleData {
     pub exercises: Vec<ImportExerciseData>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ImportCourseData {
     pub title: String,
     #[serde(default)]
@@ -65,7 +65,7 @@ pub struct ImportCourseData {
     pub modules: Vec<ImportModuleData>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ImportCoursePayload {
     pub instructor_id: i64,
     #[serde(default)]

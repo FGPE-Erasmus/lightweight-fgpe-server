@@ -2,7 +2,7 @@ use crate::schema::{course_ownership, courses, exercises, modules};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 #[derive(Insertable, Debug)]
@@ -62,7 +62,7 @@ pub struct NewExercise {
     // created_at, updated_at have DB defaults
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExportExerciseResponse {
     pub order: i32,
     pub title: String,
@@ -85,7 +85,7 @@ pub struct ExportExerciseResponse {
     // #[serde(skip)] pub module_id: i64,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExportModuleResponse {
     pub order: i32,
     pub title: String,
@@ -94,11 +94,11 @@ pub struct ExportModuleResponse {
     pub start_date: DateTime<Utc>,
     pub end_date: DateTime<Utc>,
     // #[serde(skip)] pub id: i64, // Keep internal ID if needed
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    //#[serde(skip_serializing_if = "Vec::is_empty")]
     pub exercises: Vec<ExportExerciseResponse>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ExportCourseResponse {
     pub title: String,
     pub description: String,
@@ -108,7 +108,7 @@ pub struct ExportCourseResponse {
     pub gamification_complex_rules: String,
     pub gamification_rule_results: String,
     // pub public: bool, // Include if needed in export
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    //#[serde(skip_serializing_if = "Vec::is_empty")]
     pub modules: Vec<ExportModuleResponse>,
 }
 

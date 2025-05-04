@@ -1,21 +1,28 @@
-use crate::schema::{player_groups::dsl as pg_dsl, player_registrations::dsl as pr_dsl};
 use axum::Router;
 pub(crate) use axum_test::TestServer;
-use bigdecimal::{BigDecimal, FromPrimitive};
+use bigdecimal::BigDecimal;
 use chrono::Utc;
 pub(crate) use deadpool_diesel::postgres::{
     Manager as TestManager, Pool as TestPool, Runtime as TestRuntime,
 };
+use diesel::ExpressionMethods;
 use diesel::dsl::count_star;
 use diesel::prelude::*;
 use diesel::result::Error as DieselError;
-use lightweight_fgpe_server::model::editor::{NewCourse, NewExercise, NewModule};
+use lightweight_fgpe_server::model::editor::{
+    NewCourse, NewCourseOwnership, NewExercise, NewModule,
+};
 use lightweight_fgpe_server::model::student::NewPlayerUnlock;
 use lightweight_fgpe_server::model::student::{NewPlayerRegistration, NewSubmission};
 use lightweight_fgpe_server::model::teacher::{
     NewGame, NewGameOwnership, NewGroupOwnership, NewInvite, NewPlayerGroup,
 };
+use lightweight_fgpe_server::schema::course_ownership::dsl as co_dsl;
 use lightweight_fgpe_server::schema::player_unlocks::dsl as pu_dsl;
+use lightweight_fgpe_server::schema::{courses, exercises, modules};
+use lightweight_fgpe_server::schema::{
+    player_groups::dsl as pg_dsl, player_registrations::dsl as pr_dsl,
+};
 use lightweight_fgpe_server::{init_test_router, schema};
 use serde_json::json;
 use uuid::Uuid;
@@ -617,4 +624,97 @@ pub async fn check_player_unlock_exists(pool: &TestPool, player_id: i64, exercis
     .await
     .expect("Interact failed for unlock check")
     .expect("DB query failed for unlock check")
+}
+
+pub async fn create_test_course_ownership(
+    pool: &TestPool,
+    instructor_id: i64,
+    course_id: i64,
+    owner: bool,
+) {
+    let conn = pool
+        .get()
+        .await
+        .expect("Failed to get conn for course ownership insert");
+    conn.interact(move |conn| {
+        let new_ownership = NewCourseOwnership {
+            course_id,
+            instructor_id,
+            owner,
+        };
+        diesel::insert_into(schema::course_ownership::table)
+            .values(&new_ownership)
+            .on_conflict((
+                schema::course_ownership::course_id,
+                schema::course_ownership::instructor_id,
+            ))
+            .do_update()
+            .set(schema::course_ownership::owner.eq(owner))
+            .execute(conn)
+    })
+    .await
+    .expect("Interact failed")
+    .expect("Failed to insert test course ownership");
+}
+
+pub async fn count_courses(pool: &TestPool) -> i64 {
+    let conn = pool
+        .get()
+        .await
+        .expect("Failed to get conn for course count");
+    conn.interact(|conn| courses::table.select(count_star()).get_result::<i64>(conn))
+        .await
+        .expect("Interact failed for course count")
+        .expect("DB query failed for course count")
+}
+
+pub async fn count_modules_for_course(pool: &TestPool, course_id: i64) -> i64 {
+    let conn = pool
+        .get()
+        .await
+        .expect("Failed to get conn for module count");
+    conn.interact(move |conn| {
+        modules::table
+            .filter(modules::course_id.eq(course_id))
+            .select(count_star())
+            .get_result::<i64>(conn)
+    })
+    .await
+    .expect("Interact failed for module count")
+    .expect("DB query failed for module count")
+}
+
+pub async fn count_exercises_for_module(pool: &TestPool, module_id: i64) -> i64 {
+    let conn = pool
+        .get()
+        .await
+        .expect("Failed to get conn for exercise count");
+    conn.interact(move |conn| {
+        exercises::table
+            .filter(exercises::module_id.eq(module_id))
+            .select(count_star())
+            .get_result::<i64>(conn)
+    })
+    .await
+    .expect("Interact failed for exercise count")
+    .expect("DB query failed for exercise count")
+}
+
+pub async fn check_course_ownership(pool: &TestPool, instructor_id: i64, course_id: i64) -> bool {
+    let conn = pool
+        .get()
+        .await
+        .expect("Failed to get conn for course ownership check");
+    conn.interact(move |conn| {
+        co_dsl::course_ownership
+            .filter(co_dsl::instructor_id.eq(instructor_id))
+            .filter(co_dsl::course_id.eq(course_id))
+            .filter(co_dsl::owner.eq(true))
+            .select(count_star())
+            .get_result::<i64>(conn)
+            .map(|count| count > 0)
+    })
+    .await
+    .expect("Interact failed for course ownership check")
+    .expect("DB query failed for course ownership check")
 }

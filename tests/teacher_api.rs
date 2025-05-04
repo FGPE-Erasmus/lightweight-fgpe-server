@@ -2143,7 +2143,7 @@ async fn test_dissolve_group_not_found() {
     assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
 }
 
-// --- Tests for add_group_member ---
+// add_group_member
 #[tokio::test]
 async fn test_add_group_member_success() {
     let (server, pool) = setup_test_environment().await;
