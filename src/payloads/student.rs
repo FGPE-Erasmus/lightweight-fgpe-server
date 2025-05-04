@@ -1,33 +1,33 @@
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct JoinGamePayload {
     pub player_id: i64,
     pub game_id: i64,
     pub language: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct SaveGamePayload {
     pub player_registrations_id: i64,
     pub game_state: JsonValue,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct LoadGamePayload {
     pub player_registrations_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct LeaveGamePayload {
     pub player_id: i64,
     pub game_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct SetGameLangPayload {
     pub player_id: i64,
     pub game_id: i64,
@@ -60,7 +60,7 @@ pub struct GetExerciseDataParams {
     pub player_id: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct SubmitSolutionPayload {
     pub player_id: i64,
     pub exercise_id: i64,
@@ -75,7 +75,7 @@ pub struct SubmitSolutionPayload {
     pub earned_rewards: JsonValue,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct UnlockPayload {
     pub player_id: i64,
     pub exercise_id: i64,

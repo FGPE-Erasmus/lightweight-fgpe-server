@@ -22,7 +22,7 @@ use crate::{
 use anyhow::anyhow;
 use axum::extract::{Path, Query};
 use axum::{extract::State, response::Json};
-use bigdecimal::{BigDecimal, FromPrimitive};
+use bigdecimal::BigDecimal;
 use chrono::{DateTime, Duration, Utc};
 use deadpool_diesel::postgres::Pool;
 use diesel::dsl::now;
@@ -815,10 +815,7 @@ pub async fn get_exercise_data(
                     sub_dsl::submissions
                         .filter(sub_dsl::player_id.eq(player_id))
                         .filter(sub_dsl::game_id.eq(game_id))
-                        .filter(
-                            sub_dsl::result
-                                .gt(BigDecimal::from_f64(0.0).expect("0.0 is valid BigDecimal")),
-                        )
+                        .filter(sub_dsl::result.gt(BigDecimal::from(50)))
                         .inner_join(
                             exercises_dsl::exercises.on(sub_dsl::exercise_id.eq(exercises_dsl::id)),
                         )
@@ -850,22 +847,19 @@ pub async fn get_exercise_data(
         .await?;
 
         if let Some(prev_exercise_id) = prev_exercise_id_opt {
-            let prev_solved =
-                helper::run_query(&pool, {
-                    move |conn| {
-                        diesel::dsl::select(diesel::dsl::exists(
-                            sub_dsl::submissions
-                                .filter(sub_dsl::player_id.eq(player_id))
-                                .filter(sub_dsl::game_id.eq(game_id))
-                                .filter(sub_dsl::exercise_id.eq(prev_exercise_id))
-                                .filter(sub_dsl::result.gt(
-                                    BigDecimal::from_f64(0.0).expect("0.0 is valid BigDecimal"),
-                                )),
-                        ))
-                        .get_result::<bool>(conn)
-                    }
-                })
-                .await?;
+            let prev_solved = helper::run_query(&pool, {
+                move |conn| {
+                    diesel::dsl::select(diesel::dsl::exists(
+                        sub_dsl::submissions
+                            .filter(sub_dsl::player_id.eq(player_id))
+                            .filter(sub_dsl::game_id.eq(game_id))
+                            .filter(sub_dsl::exercise_id.eq(prev_exercise_id))
+                            .filter(sub_dsl::result.gt(BigDecimal::from(50))),
+                    ))
+                    .get_result::<bool>(conn)
+                }
+            })
+            .await?;
 
             if !prev_solved {
                 is_locked_by_condition = true;
@@ -944,7 +938,7 @@ pub async fn submit_solution(
                     .filter(sub_dsl::player_id.eq(player_id))
                     .filter(sub_dsl::exercise_id.eq(exercise_id))
                     .filter(sub_dsl::game_id.eq(game_id))
-                    .filter(sub_dsl::result.gt(BigDecimal::from_f64(0.0).expect("0.0 is valid BigDecimal")))
+                    .filter(sub_dsl::result.gt(BigDecimal::from(50)))
             )).get_result::<bool>(transaction_conn)?;
 
             let is_first_correct = current_result_is_correct && !was_previously_solved;
@@ -1215,9 +1209,7 @@ pub async fn get_last_solution(
             sub_dsl::submissions
                 .filter(sub_dsl::player_id.eq(player_id))
                 .filter(sub_dsl::exercise_id.eq(exercise_id))
-                .filter(
-                    sub_dsl::result.gt(BigDecimal::from_f64(0.0).expect("0.0 is valid BigDecimal")),
-                )
+                .filter(sub_dsl::result.gt(BigDecimal::from(50)))
                 .order(sub_dsl::submitted_at.desc())
                 .select(selection)
                 .first::<LastSolutionResponse>(conn)

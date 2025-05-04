@@ -5,7 +5,7 @@ use crate::schema::submissions;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 #[derive(Insertable, Debug)]
@@ -58,7 +58,7 @@ pub struct NewPlayerUnlock {
     // unlocked_at has a DB default (CURRENT_TIMESTAMP)
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct GameMetadata {
     pub registration_id: i64,
     pub progress: i32,
@@ -76,7 +76,7 @@ pub struct GameMetadata {
     pub game_end_date: DateTime<Utc>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct CourseDataResponse {
     pub gamification_rule_conditions: String,
     pub gamification_complex_rules: String,
@@ -84,7 +84,7 @@ pub struct CourseDataResponse {
     pub module_ids: Vec<i64>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ModuleDataResponse {
     pub order: i32,
     pub title: String,
@@ -95,7 +95,7 @@ pub struct ModuleDataResponse {
     pub exercise_ids: Vec<i64>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ExerciseDataResponse {
     // exercises fields
     pub order: i32,
@@ -114,14 +114,12 @@ pub struct ExerciseDataResponse {
     pub locked: bool,
 }
 
-#[derive(Serialize, Debug, Queryable)]
+#[derive(Deserialize, Serialize, Debug, Queryable)]
 pub struct LastSolutionResponse {
     pub submitted_code: String,
     pub metrics: JsonValue,
     pub result: BigDecimal,
     pub result_description: JsonValue,
     pub feedback: String,
-    // submitted_at for ordering, but don't serialize it
-    #[serde(skip_serializing)]
-    pub _submitted_at: DateTime<Utc>,
+    pub submitted_at: DateTime<Utc>,
 }

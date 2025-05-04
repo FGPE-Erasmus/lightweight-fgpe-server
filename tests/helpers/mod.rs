@@ -1,7 +1,7 @@
 use crate::schema::{player_groups::dsl as pg_dsl, player_registrations::dsl as pr_dsl};
 use axum::Router;
 pub(crate) use axum_test::TestServer;
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, FromPrimitive};
 use chrono::Utc;
 pub(crate) use deadpool_diesel::postgres::{
     Manager as TestManager, Pool as TestPool, Runtime as TestRuntime,
@@ -10,10 +10,12 @@ use diesel::dsl::count_star;
 use diesel::prelude::*;
 use diesel::result::Error as DieselError;
 use lightweight_fgpe_server::model::editor::{NewCourse, NewExercise, NewModule};
+use lightweight_fgpe_server::model::student::NewPlayerUnlock;
 use lightweight_fgpe_server::model::student::{NewPlayerRegistration, NewSubmission};
 use lightweight_fgpe_server::model::teacher::{
     NewGame, NewGameOwnership, NewGroupOwnership, NewInvite, NewPlayerGroup,
 };
+use lightweight_fgpe_server::schema::player_unlocks::dsl as pu_dsl;
 use lightweight_fgpe_server::{init_test_router, schema};
 use serde_json::json;
 use uuid::Uuid;
@@ -573,4 +575,46 @@ pub async fn count_player_group_memberships(pool: &TestPool, player_id: i64) -> 
     .await
     .expect("Interact failed for group count")
     .expect("DB query failed for group count")
+}
+
+pub async fn create_test_player_unlock(pool: &TestPool, player_id: i64, exercise_id: i64) {
+    let conn = pool
+        .get()
+        .await
+        .expect("Failed to get conn for unlock insert");
+    conn.interact(move |conn| {
+        let new_unlock = NewPlayerUnlock {
+            player_id,
+            exercise_id,
+        };
+        diesel::insert_into(schema::player_unlocks::table)
+            .values(&new_unlock)
+            .on_conflict((
+                schema::player_unlocks::player_id,
+                schema::player_unlocks::exercise_id,
+            ))
+            .do_nothing()
+            .execute(conn)
+    })
+    .await
+    .expect("Interact failed")
+    .expect("Failed to insert test player unlock");
+}
+
+pub async fn check_player_unlock_exists(pool: &TestPool, player_id: i64, exercise_id: i64) -> bool {
+    let conn = pool
+        .get()
+        .await
+        .expect("Failed to get conn for unlock check");
+    conn.interact(move |conn| {
+        pu_dsl::player_unlocks
+            .filter(pu_dsl::player_id.eq(player_id))
+            .filter(pu_dsl::exercise_id.eq(exercise_id))
+            .select(count_star())
+            .get_result::<i64>(conn)
+            .map(|count| count > 0)
+    })
+    .await
+    .expect("Interact failed for unlock check")
+    .expect("DB query failed for unlock check")
 }

@@ -1070,7 +1070,7 @@ async fn test_get_student_submissions_success_only() {
     create_test_player_registration(&pool, player_id, game_id).await;
 
     let _sub1_id = create_test_submission(&pool, player_id, game_id, ex1_id, false, 0.4).await;
-    let sub2_id = create_test_submission(&pool, player_id, game_id, ex1_id, true, 0.5).await;
+    let sub2_id = create_test_submission(&pool, player_id, game_id, ex1_id, true, 1.0).await;
     let sub3_id = create_test_submission(&pool, player_id, game_id, ex1_id, false, 1.0).await;
 
     let response = server
