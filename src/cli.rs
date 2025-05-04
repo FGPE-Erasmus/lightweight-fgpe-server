@@ -25,7 +25,7 @@ pub struct Args {
     /// Keycloak server address and port (e.g., "127.0.0.1:8080")
     /// Can also be set using the KEYCLOAK_SERVER_URL environment variable.
     /// Default value: 127.0.0.1:8080
-    #[arg(long, env = "KEYCLOAK_SERVER_URL", default_value = "127.0.0.1:8080")]
+    #[arg(long, env = "KEYCLOAK_SERVER_URL", default_value = "http://127.0.0.1:8080")]
     pub keycloak_server_url: Url,
 
     /// Keycloak realm name
