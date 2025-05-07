@@ -38,7 +38,7 @@ fn create_valid_import_payload(instructor_id: i64) -> ImportCoursePayload {
                     start_date: None,
                     end_date: None,
                     exercises: vec![ImportExerciseData {
-                        _version: BigDecimal::from(1),
+                        version: BigDecimal::from(1),
                         order: 1,
                         title: "Exercise 1.1".to_string(),
                         description: "First exercise".to_string(),
