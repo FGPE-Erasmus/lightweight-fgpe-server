@@ -46,6 +46,11 @@ Print help
 Print version
 ```
 
+Testing:
+
+    1. open project directory in terminal
+    2. execute command `cargo test -- --test-threads=1`
+
 ## API Specification
 
 ### Authentication

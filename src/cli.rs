@@ -22,13 +22,13 @@ pub struct Args {
     #[arg(long, env = "SERVER_ADDRESS", default_value = "127.0.0.1:3000")]
     pub server_address: SocketAddr,
 
-    /// Keycloak server address and port (e.g., "127.0.0.1:8080")
+    /// Keycloak server address and port (e.g., "127.0.0.1:8443")
     /// Can also be set using the KEYCLOAK_SERVER_URL environment variable.
-    /// Default value: 127.0.0.1:8080
+    /// Default value: https://127.0.0.1:8443
     #[arg(
         long,
         env = "KEYCLOAK_SERVER_URL",
-        default_value = "http://127.0.0.1:8080"
+        default_value = "https://127.0.0.1:8443"
     )]
     pub keycloak_server_url: Url,
 
@@ -40,8 +40,8 @@ pub struct Args {
 
     /// Keycloak allowed audiences (e.g., "account")
     /// Can also be set using the KEYCLOAK_AUDIENCES environment variable.
-    /// Default value: account
-    #[arg(long, env = "KEYCLOAK_AUDIENCES", default_value = "account")]
+    /// Default value: fgpe-backend
+    #[arg(long, env = "KEYCLOAK_AUDIENCES", default_value = "fgpe-backend")]
     pub keycloak_audiences: String,
 
     /// Log level (e.g., "info")
