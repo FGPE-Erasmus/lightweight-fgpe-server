@@ -23,27 +23,27 @@ Building:
 
 Usage:
 ```
-lightweight-fgpe-server.exe [OPTIONS] --connection-str <CONNECTION_STR>
+Usage: lightweight-fgpe-server [OPTIONS] --connection-str <CONNECTION_STR>
 
 Options:
---connection-str <CONNECTION_STR>
-Database connection string (e.g., "postgres://user:password@host:port/database") Can also be set using the DATABASE_URL environment variable [env: DATABASE_URL=]
---db-pool-max-size <DB_POOL_MAX_SIZE>
-Database connection pool size Can also be set using the DB_POOL_MAX_SIZE environment variable. Default value: 10 [env: DB_POOL_MAX_SIZE=] [default: 10]
---server-address <SERVER_ADDRESS>
-Server listen address and port (e.g., "127.0.0.1:3000") Can also be set using the SERVER_ADDRESS environment variable. Default value: 127.0.0.1:3000 [env: SERVER_ADDRESS=] [default: 127.0.0.1:3000]
---keycloak-server-url <KEYCLOAK_SERVER_URL>
-Keycloak server address and port (e.g., "127.0.0.1:8080") Can also be set using the KEYCLOAK_SERVER_URL environment variable. Default value: 127.0.0.1:8080 [env: KEYCLOAK_SERVER_URL=] [default: http://127.0.0.1:8080]
---keycloak-realm <KEYCLOAK_REALM>
-Keycloak realm name Can also be set using the KEYCLOAK_REALM environment variable. Default value: fgpe [env: KEYCLOAK_REALM=] [default: fgpe]
---keycloak-audiences <KEYCLOAK_AUDIENCES>
-Keycloak allowed audiences (e.g., "account") Can also be set using the KEYCLOAK_AUDIENCES environment variable. Default value: account [env: KEYCLOAK_AUDIENCES=] [default: account]
---log-level <LOG_LEVEL>
-Log level (e.g., "info") Can also be set using the RUST_LOG environment variable. Default value: info [env: RUST_LOG=] [default: info]
--h, --help
-Print help
--V, --version
-Print version
+      --connection-str <CONNECTION_STR>
+          Database connection string (e.g., "postgres://user:password@host:port/database") Can also be set using the DATABASE_URL environment variable [env: DATABASE_URL=]
+      --db-pool-max-size <DB_POOL_MAX_SIZE>
+          Database connection pool size Can also be set using the DB_POOL_MAX_SIZE environment variable. Default value: 10 [env: DB_POOL_MAX_SIZE=] [default: 10]
+      --server-address <SERVER_ADDRESS>
+          Server listen address and port (e.g., "127.0.0.1:3000") Can also be set using the SERVER_ADDRESS environment variable. Default value: 127.0.0.1:3000 [env: SERVER_ADDRESS=] [default: 127.0.0.1:3000]
+      --keycloak-server-url <KEYCLOAK_SERVER_URL>
+          Keycloak server address and port (e.g., "127.0.0.1:8443") Can also be set using the KEYCLOAK_SERVER_URL environment variable. Default value: https://127.0.0.1:8443 [env: KEYCLOAK_SERVER_URL=] [default: https://127.0.0.1:8443]
+      --keycloak-realm <KEYCLOAK_REALM>
+          Keycloak realm name Can also be set using the KEYCLOAK_REALM environment variable. Default value: fgpe [env: KEYCLOAK_REALM=] [default: fgpe]
+      --keycloak-audiences <KEYCLOAK_AUDIENCES>
+          Keycloak allowed audiences (e.g., "account") Can also be set using the KEYCLOAK_AUDIENCES environment variable. Default value: fgpe-backend [env: KEYCLOAK_AUDIENCES=] [default: fgpe-backend]
+      --log-level <LOG_LEVEL>
+          Log level (e.g., "info") Can also be set using the RUST_LOG environment variable. Default value: info [env: RUST_LOG=] [default: info]
+  -h, --help
+          Print help
+  -V, --version
+          Print version
 ```
 
 Testing:
