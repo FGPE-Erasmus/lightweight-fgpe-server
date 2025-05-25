@@ -67,9 +67,9 @@ All API responses follow a standard JSON structure:
 
 ```json
 {
-  "status_code": 200, // Or other 2xx/3xx code
-  "status_message": "OK", // Or other relevant message
-  "data": { ... } // The actual response data (or null), type varies by endpoint
+  "status_code": 200,
+  "status_message": "OK",
+  "data": { "something": {} }
 }
 ```
 
@@ -77,8 +77,8 @@ All API responses follow a standard JSON structure:
 
 ```json
 {
-"status_code": 4xx or 5xx, // e.g., 404, 403, 500
-"status_message": "Error description", // e.g., "Not Found: Resource not found", "Forbidden: Insufficient permissions"
+"status_code": 404,
+"status_message": "Error description",
 "data": null
 }
 ```
@@ -129,7 +129,7 @@ All API responses follow a standard JSON structure:
         ```json
         {
           "player_registrations_id": 789,
-          "game_state": <Json>
+          "game_state": {}
         }
         ```
     *   Success Response Body (`data` field):
@@ -147,7 +147,7 @@ All API responses follow a standard JSON structure:
         ```
     *   Success Response Body (`data` field):
         ```json
-          <Json>
+          {}
         ```
     *   Errors: 404 (Registration not found)
 *   **`POST /leave_game`**
@@ -271,9 +271,9 @@ All API responses follow a standard JSON structure:
           "game_id": 456,
           "client": "web-ide",
           "submitted_code": "print('Hello, World!')",
-          "metrics": <Json>,
+          "metrics": {},
           "result": 100.0,
-          "result_description": <Json>,
+          "result_description": {},
           "feedback": "",
           "entered_at": "2024-07-27T11:00:00Z",
           "earned_rewards": [51, 52]
@@ -300,19 +300,16 @@ All API responses follow a standard JSON structure:
     *   Description: Retrieves the most recent relevant submission for an exercise (prioritizes last correct, falls back to last overall).
     *   Query Params: `player_id` (i64, required), `exercise_id` (i64, required)
     *   Request Body: None
-    *   Success Response Body (`data` field):
+    *   Success Response Body (`data` field) (`null` if solution doesnt exist):
         ```json
-        // If a solution exists
         {
           "submitted_code": "print('Hello, World!')",
-          "metrics": <Json>,
+          "metrics": {},
           "result": 100.0,
-          "result_description": <Json>,
+          "result_description": {},
           "feedback": "",
           "submitted_at": "2024-07-27T11:05:00Z"
         }
-        // If no solution exists
-        null
         ```
     *   Errors: 404 (Player or Exercise not found)
 
@@ -406,9 +403,9 @@ All API responses follow a standard JSON structure:
           "player_id": 123,
           "client": "web-ide",
           "submitted_code": "def func():\n  pass",
-          "metrics": <Json>,
+          "metrics": {},
           "result": 100.0,
-          "result_description": <Json>,
+          "result_description": {},
           "first_solution": true,
           "feedback": "",
           "earned_rewards": [],
@@ -447,13 +444,13 @@ All API responses follow a standard JSON structure:
         {
           "instructor_id": 201,
           "title": "New Python Course Game",
-          "public": false, // optional, default false
-          "active": true, // optional, default false
-          "description": "A game for the Python course.", // optional, default ""
+          "public": false,
+          "active": true,
+          "description": "A game for the Python course.",
           "course_id": 33,
           "programming_language": "py",
-          "module_lock": 0.5, // optional, default 0.0
-          "exercise_lock": true // optional, default false
+          "module_lock": 0.5,
+          "exercise_lock": true
         }
         ```
     *   Success Response Body (`data` field):
@@ -468,10 +465,9 @@ All API responses follow a standard JSON structure:
         {
           "instructor_id": 201,
           "game_id": 460,
-          "title": "Updated Python Game Title", // optional
-          "active": false, // optional
-          "module_lock": 0.8 // optional
-          // other fields like public, description, exercise_lock are also optional
+          "title": "Updated Python Game Title",
+          "active": false,
+          "module_lock": 0.8
         }
         ```
     *   Success Response Body (`data` field):
@@ -484,10 +480,10 @@ All API responses follow a standard JSON structure:
     *   Request Body:
         ```json
         {
-          "requesting_instructor_id": 201, // Must be owner or admin
+          "requesting_instructor_id": 201,
           "game_id": 460,
           "instructor_to_add_id": 205,
-          "is_owner": false // optional, default false
+          "is_owner": false
         }
         ```
     *   Success Response Body (`data` field):
@@ -500,7 +496,7 @@ All API responses follow a standard JSON structure:
     *   Request Body:
         ```json
         {
-          "requesting_instructor_id": 201, // Must be owner or admin
+          "requesting_instructor_id": 201,
           "game_id": 460,
           "instructor_to_remove_id": 205
         }
@@ -569,8 +565,8 @@ All API responses follow a standard JSON structure:
         {
           "instructor_id": 201,
           "display_name": "Study Group Alpha",
-          "display_avatar": null, // optional URL string
-          "member_list": [123, 124] // optional, default empty
+          "display_avatar": null,
+          "member_list": [123, 124]
         }
         ```
     *   Success Response Body (`data` field):
@@ -583,7 +579,7 @@ All API responses follow a standard JSON structure:
     *   Request Body:
         ```json
         {
-          "instructor_id": 201, // Must be owner or admin
+          "instructor_id": 201,
           "group_id": 55
         }
         ```
@@ -597,7 +593,7 @@ All API responses follow a standard JSON structure:
     *   Request Body:
         ```json
         {
-          "instructor_id": 201, // Must be owner or admin
+          "instructor_id": 201,
           "group_id": 55,
           "player_id": 125
         }
@@ -612,7 +608,7 @@ All API responses follow a standard JSON structure:
     *   Request Body:
         ```json
         {
-          "instructor_id": 201, // Must be owner or admin
+          "instructor_id": 201,
           "group_id": 55,
           "player_id": 124
         }
@@ -627,13 +623,13 @@ All API responses follow a standard JSON structure:
     *   Request Body:
         ```json
         {
-          "instructor_id": 201, // Admin (0) or instructor with permission for game/group
+          "instructor_id": 201,
           "email": "new.student@example.com",
           "display_name": "New Student",
-          "display_avatar": null, // optional URL string
-          "game_id": 460, // optional
-          "group_id": 55, // optional
-          "language": "en" // optional, defaults to "en" if game_id is present
+          "display_avatar": null,
+          "game_id": 460,
+          "group_id": 55,
+          "language": "en"
         }
         ```
     *   Success Response Body (`data` field):
@@ -646,7 +642,7 @@ All API responses follow a standard JSON structure:
     *   Request Body:
         ```json
         {
-          "instructor_id": 0, // Must be admin
+          "instructor_id": 0,
           "player_id": 130
         }
         ```
@@ -660,7 +656,7 @@ All API responses follow a standard JSON structure:
     *   Request Body:
         ```json
         {
-          "instructor_id": 0, // Must be admin
+          "instructor_id": 0,
           "player_id": 130
         }
         ```
@@ -674,15 +670,15 @@ All API responses follow a standard JSON structure:
     *   Request Body:
         ```json
         {
-          "instructor_id": 201, // Admin (0) or instructor with permission for group_id
-          "game_id": 460, // optional
-          "group_id": 55 // optional
+          "instructor_id": 201,
+          "game_id": 460,
+          "group_id": 55
         }
         ```
     *   Success Response Body (`data` field):
         ```json
         {
-          "invite_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479" // Example UUID
+          "invite_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
         }
         ```
     *   Errors: 403/404 (Permission denied or Instructor/Game/Group not found)
@@ -692,7 +688,7 @@ All API responses follow a standard JSON structure:
         ```json
         {
           "player_id": 135,
-          "uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479" // The UUID from generate_invite_link
+          "uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
         }
         ```
     *   Success Response Body (`data` field):
@@ -713,40 +709,40 @@ All API responses follow a standard JSON structure:
         ```json
         {
           "instructor_id": 301,
-          "public": false, // optional, default false
+          "public": false,
           "course_data": {
             "title": "Imported Advanced Course",
-            "description": "Details about the imported course.", // optional
-            "languages": "en", // optional
-            "programming_languages": "rust", // optional
-            "gamification_rule_conditions": "{}", // optional
-            "gamification_complex_rules": "{}", // optional
-            "gamification_rule_results": "{}", // optional
-            "modules": [ // optional
+            "description": "Details about the imported course.",
+            "languages": "en",
+            "programming_languages": "rust",
+            "gamification_rule_conditions": "{}",
+            "gamification_complex_rules": "{}",
+            "gamification_rule_results": "{}",
+            "modules": [
               {
                 "order": 1,
                 "title": "Module A",
-                "description": "First module.", // optional
+                "description": "First module.",
                 "language": "en",
-                "start_date": null, // optional ISO 8601 string or null
-                "end_date": null, // optional ISO 8601 string or null
-                "exercises": [ // optional
+                "start_date": null,
+                "end_date": null,
+                "exercises": [
                   {
                     "version": 1.0,
                     "order": 1,
                     "title": "Exercise A.1",
-                    "description": "First exercise.", // optional
+                    "description": "First exercise.",
                     "language": "en",
                     "programming_language": "rust",
-                    "init_code": "", // optional
-                    "pre_code": "", // optional
-                    "post_code": "", // optional
-                    "test_code": "", // optional
-                    "check_source": "", // optional
-                    "hidden": false, // optional, default false
-                    "locked": false, // optional, default false
+                    "init_code": "",
+                    "pre_code": "",
+                    "post_code": "",
+                    "test_code": "",
+                    "check_source": "",
+                    "hidden": false,
+                    "locked": false,
                     "mode": "code",
-                    "mode_parameters": {}, // optional, default {}
+                    "mode_parameters": {},
                     "difficulty": "medium"
                   }
                 ]
@@ -800,14 +796,9 @@ All API responses follow a standard JSON structure:
                   "mode_parameters": {},
                   "difficulty": "easy"
                 }
-                // ... more exercises
               ]
             }
-            // ... more modules
           ]
         }
         ```
     *   Errors: 403 (Permission denied), 404 (Course not found)
-
----
-```
