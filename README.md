@@ -814,7 +814,7 @@ This software has been developed as a part of the FGPE++ Gamified Programming Le
 </td>
 <td border=0>
 
-![Framework for Gamified Programming Education project](docs/logo_FGPE.jpg) ![Erasmus+](docs/logo_erasmus.jpg)
+![Framework for Gamified Programming Education project](logo_FGPE.jpg) ![Erasmus+](logo_erasmus.jpg)
 
 </td>
 </tr>
