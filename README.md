@@ -802,3 +802,24 @@ All API responses follow a standard JSON structure:
         }
         ```
     *   Errors: 403 (Permission denied), 404 (Course not found)
+ 
+*   Acknowledgments
+
+<table cellspacing="0" cellpadding="0" border=0>
+<tr border=0>
+<td border=0>
+
+This software has been developed as a part of the FGPE++ Gamified Programming Learning at Scale (https://fgpeplus2.usz.edu.pl/) project which was co-funded by the European Union.
+
+</td>
+<td border=0>
+
+![Framework for Gamified Programming Education project](docs/logo_FGPE.jpg) ![Erasmus+](docs/logo_erasmus.jpg)
+
+</td>
+</tr>
+</table>
+
+## License
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
